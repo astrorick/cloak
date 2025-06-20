@@ -1,3 +1,3 @@
 # Cloak
 
-_Cloak_ is a minimal CLI tool to apply cryptography algorithms to user files.
+_Cloak_ is a minimal CLI tool that lets you encrypt and decrypt files.
