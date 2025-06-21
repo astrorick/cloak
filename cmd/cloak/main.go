@@ -6,12 +6,17 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
+	"syscall"
 
 	"github.com/astrorick/semantika"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
+
+//* Cloak Logic */
 
 type Cloak struct {
 	inputFilePath  string
@@ -22,16 +27,7 @@ type Cloak struct {
 }
 
 // Encrypt encodes the input file with the specified algorithm and writes the result to the output file.
-func (clk *Cloak) Encrypt() error {
-	/*
-		Program logic:
-			1. ask user for psw
-			2. read input file
-			3. encrypt input file with encryption alg and psw
-			4. save to output file
-			5. if replace mode, delete input file
-			6. return
-	*/
+func (clk *Cloak) Encrypt(psw string) error {
 
 	fmt.Printf("Encrypting \"%s\" to \"%s\" using %s. ", clk.inputFilePath, clk.outputFilePath, clk.cryptoAlgorithm)
 	if clk.replaceMode {
@@ -44,16 +40,7 @@ func (clk *Cloak) Encrypt() error {
 }
 
 // Decrypt decodes the input file with the specified algorithm and writes the result to the output file.
-func (clk *Cloak) Decrypt() error {
-	/*
-		Program logic:
-			1. ask user for psw
-			2. take input file
-			3. decrypt input file with encryption alg and psw
-			4. save to output file
-			5. if replace mode, delete input file (CHECK FOR SUCCESS)
-			6. return
-	*/
+func (clk *Cloak) Decrypt(psw string) error {
 
 	fmt.Printf("Decrypting \"%s\" to \"%s\" using %s. ", clk.inputFilePath, clk.outputFilePath, clk.cryptoAlgorithm)
 	if clk.replaceMode {
@@ -65,7 +52,8 @@ func (clk *Cloak) Decrypt() error {
 	return nil
 }
 
-// program entry point
+//* Program Logic */
+
 func main() {
 	//* Program Version */
 	appVersion := &semantika.Version{
@@ -146,7 +134,8 @@ func main() {
 			clk.cryptoAlgorithm = encryptionAlgorithm
 			clk.replaceMode = encryptionReplace
 
-			if err := clk.Encrypt(); err != nil {
+			// ask user for password and encrypt
+			if err := clk.Encrypt(requestUserPassword()); err != nil {
 				log.Fatal(err)
 			}
 		},
@@ -188,7 +177,8 @@ func main() {
 			clk.cryptoAlgorithm = decryptionAlgorithm
 			clk.replaceMode = decryptionReplace
 
-			if err := clk.Decrypt(); err != nil {
+			// ask user for password and decrypt
+			if err := clk.Decrypt(requestUserPassword()); err != nil {
 				log.Fatal(err)
 			}
 		},
@@ -223,6 +213,8 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+//* Auxiliaries */
 
 func fileExists(filePath string) (bool, error) {
 	_, err := os.Stat(filePath)
@@ -262,5 +254,43 @@ func confirmOverwrite(filePath string) bool {
 
 		// repeat question
 		fmt.Print("Invalid answer. Overwrite? (Y/n): ")
+	}
+}
+
+func requestUserPassword() string {
+	// define set of allowed characters in passwords
+	allowedCharacters := regexp.MustCompile(`^[\x21-\x7E]+$`)
+
+	for {
+		// ask for password
+		fmt.Print("Enter password: ")
+		bytePassword, _ := term.ReadPassword(int(syscall.Stdin)) // using term for masked input
+		fmt.Println()
+		providedPassword := string(bytePassword)
+
+		// check password lenght
+		if len(providedPassword) < 8 {
+			fmt.Println("Password too short. Minimum 8 characters.")
+			continue
+		}
+
+		// check password content
+		if !allowedCharacters.MatchString(providedPassword) {
+			fmt.Println("Password contains invalid characters. Use only A-Z, a-z, 0-9, and standard special characters (no spaces).")
+			continue
+		}
+
+		// confirm password
+		fmt.Print("Confirm password: ")
+		byteConfirm, _ := term.ReadPassword(int(syscall.Stdin)) // using term for masked input
+		fmt.Println()
+		confirmPassword := string(byteConfirm)
+
+		// check passwords match
+		if providedPassword == confirmPassword {
+			return providedPassword
+		}
+
+		fmt.Println("Passwords do not match. Try again.")
 	}
 }
