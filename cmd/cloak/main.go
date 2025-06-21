@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"regexp"
@@ -19,11 +20,16 @@ import (
 //* Cloak Logic */
 
 type Cloak struct {
-	inputFilePath  string
-	outputFilePath string
+	inputFilePath  string // path to input file
+	outputFilePath string // path to output file
 
-	cryptoAlgorithm string
-	replaceMode     bool
+	cryptoAlgorithm string // string representation of the crypto algorithm to use
+	replaceMode     bool   // whether to remove the source file after ancryption/decryption
+}
+
+type CryptoAlgorithm interface {
+	Encrypt(input io.Reader, output io.Writer, key []byte) error
+	Decrypt(input io.Reader, output io.Writer, key []byte) error
 }
 
 // Encrypt encodes the input file with the specified algorithm and writes the result to the output file.
@@ -52,7 +58,12 @@ func (clk *Cloak) Decrypt(psw string) error {
 	return nil
 }
 
-//* Program Logic */
+/*func deriveKey(password string, salt string, keyLenght int) ([]byte, error) {
+	salt := []byte("fixedSaltForNow") // Ideally random + stored with ciphertext
+	return pbkdf2.Key()([]byte(password), salt, 100_000, keyLenght, sha256.New)
+}*/
+
+//* CLI Logic */
 
 func main() {
 	//* Program Version */
@@ -71,8 +82,8 @@ func main() {
 
 		encryptionAlgorithm string // algorithm used for encryption
 		decryptionAlgorithm string // algorithm used for decryption
-		encryptionReplace   bool   // whether to remove the original file after encryption
-		decryptionReplace   bool   // whether to remove the original file after decryption
+		encryptionReplace   bool   // whether to remove the source file after encryption
+		decryptionReplace   bool   // whether to remove the source file after decryption
 
 		implementedAlgorithms = []string{"aes128", "aes192", "aes256"} // all implemented algorithms for encryption and decryption
 	)
@@ -100,7 +111,7 @@ func main() {
 	encryptCommand := &cobra.Command{ // cloak enc
 		Use:   "enc input output [-x algorithm] [-r]",
 		Short: "Encrypt files",
-		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -x flag (defaults to aes256). Write the result to the output file. If the optional -r flag is passed, the original file is then deleted.",
+		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -x flag (defaults to aes256). Write the result to the output file. If the optional -r flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			// check if input file inputExists
@@ -143,7 +154,7 @@ func main() {
 	decryptCommand := &cobra.Command{ // cloak dec
 		Use:   "dec input output [-x algorithm] [-r]",
 		Short: "Decrypt files",
-		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -x flag (defaults to aes256). Write the result to the output file. If the optional -r flag is passed, the original file is then deleted.",
+		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -x flag (defaults to aes256). Write the result to the output file. If the optional -r flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			// check if input file inputExists
@@ -192,7 +203,7 @@ func main() {
 			fmt.Printf("Implemented algorithms: (%s)\n", strings.Join(implementedAlgorithms, ", "))
 		},
 	}
-	displayVersionCommand := &cobra.Command{ // cloak ver
+	displayVersionCommand := &cobra.Command{ // cloak version
 		Use:   "version",
 		Short: "Display program version",
 		Long:  "Display the current version of this program",
@@ -203,18 +214,18 @@ func main() {
 	}
 	rootCommand.Flags().BoolVarP(&displayVersion, "version", "v", false, "Display program version")
 	encryptCommand.Flags().StringVarP(&encryptionAlgorithm, "algorithm", "x", "aes256", fmt.Sprintf("Encryption algorithm (%s)", strings.Join(implementedAlgorithms, ", ")))
-	encryptCommand.Flags().BoolVarP(&encryptionReplace, "replace", "r", false, "Remove original file after encryption")
+	encryptCommand.Flags().BoolVarP(&encryptionReplace, "replace", "r", false, "Remove source file after encryption")
 	decryptCommand.Flags().StringVarP(&decryptionAlgorithm, "algorithm", "x", "aes256", fmt.Sprintf("Decryption algorithm (%s)", strings.Join(implementedAlgorithms, ", ")))
-	decryptCommand.Flags().BoolVarP(&decryptionReplace, "replace", "r", false, "Remove original file after decryption")
+	decryptCommand.Flags().BoolVarP(&decryptionReplace, "replace", "r", false, "Remove source file after decryption")
 	rootCommand.AddCommand(encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
 
-	//* Run Program */
+	// run root command
 	if err := rootCommand.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-//* Auxiliaries */
+//* Auxiliary Functions */
 
 func fileExists(filePath string) (bool, error) {
 	_, err := os.Stat(filePath)
