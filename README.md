@@ -1,14 +1,14 @@
 # Cloak
 
-_Cloak_ is a minimal CLI tool for encrypting and decrypting files
+_Cloak_ is a minimal CLI tool for encrypting and decrypting files.
 
 ## Features
 
 Here's a list of currently available features:
 
 - Simple file encryption and decryption
+- Supports multiple cryptography algorithms
 - Lightweight and easy to use
-- Supports multiple cryptography
 
 ## Work In Progress
 
