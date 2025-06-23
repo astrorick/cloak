@@ -34,6 +34,7 @@ type CryptoAlgorithm interface {
 	Decrypt(input io.Reader, output io.Writer, key []byte) error
 }
 
+var defaultAlgorithm = "aes128" // change this to change default algorithm
 var implementedAlgorithms = map[string]CryptoAlgorithm{
 	"aes128": algos.NewAES128(),
 	"aes256": algos.NewAES256(),
@@ -272,9 +273,9 @@ func main() {
 
 	//* Register Flags and Commands */
 	rootCommand.Flags().BoolVarP(&displayVersion, "version", "v", false, "Display program version")
-	encryptCommand.Flags().StringVarP(&encryptionAlgorithm, "algorithm", "x", "aes256", fmt.Sprintf("Encryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
+	encryptCommand.Flags().StringVarP(&encryptionAlgorithm, "algorithm", "x", defaultAlgorithm, fmt.Sprintf("Encryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
 	encryptCommand.Flags().BoolVarP(&encryptionReplace, "replace", "r", false, "Remove source file after encryption")
-	decryptCommand.Flags().StringVarP(&decryptionAlgorithm, "algorithm", "x", "aes256", fmt.Sprintf("Decryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
+	decryptCommand.Flags().StringVarP(&decryptionAlgorithm, "algorithm", "x", defaultAlgorithm, fmt.Sprintf("Decryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
 	decryptCommand.Flags().BoolVarP(&decryptionReplace, "replace", "r", false, "Remove source file after decryption")
 	rootCommand.AddCommand(encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
 
