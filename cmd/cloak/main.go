@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/astrorick/cloak/pkg/algos"
 	"github.com/astrorick/semantika"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -23,45 +24,37 @@ type Cloak struct {
 	inputFilePath  string // path to input file
 	outputFilePath string // path to output file
 
-	cryptoAlgorithm string // string representation of the crypto algorithm to use
-	replaceMode     bool   // whether to remove the source file after ancryption/decryption
+	cryptoAlgorithm CryptoAlgorithm // interface representation of the crypto algorithm to use
+	replaceMode     bool            // whether to remove the source file after ancryption/decryption
 }
 
 type CryptoAlgorithm interface {
+	Name() string
+	DeriveKey(psw string, salt []byte) ([]byte, error)
 	Encrypt(input io.Reader, output io.Writer, key []byte) error
 	Decrypt(input io.Reader, output io.Writer, key []byte) error
 }
 
+var implementedAlgorithms = map[string]CryptoAlgorithm{
+	"aes128": algos.NewAES128(),
+	"aes256": algos.NewAES256(),
+}
+
 // Encrypt encodes the input file with the specified algorithm and writes the result to the output file.
 func (clk *Cloak) Encrypt(psw string) error {
-
 	fmt.Printf("Encrypting \"%s\" to \"%s\" using %s. ", clk.inputFilePath, clk.outputFilePath, clk.cryptoAlgorithm)
-	if clk.replaceMode {
-		fmt.Println("The original file is deleted.")
-	} else {
-		fmt.Println("The original file is kept.")
-	}
 
 	return nil
 }
 
 // Decrypt decodes the input file with the specified algorithm and writes the result to the output file.
 func (clk *Cloak) Decrypt(psw string) error {
-
 	fmt.Printf("Decrypting \"%s\" to \"%s\" using %s. ", clk.inputFilePath, clk.outputFilePath, clk.cryptoAlgorithm)
-	if clk.replaceMode {
-		fmt.Println("The original file is deleted.")
-	} else {
-		fmt.Println("The original file is kept.")
-	}
+
+	// TODO: add logic of decryption
 
 	return nil
 }
-
-/*func deriveKey(password string, salt string, keyLenght int) ([]byte, error) {
-	salt := []byte("fixedSaltForNow") // Ideally random + stored with ciphertext
-	return pbkdf2.Key()([]byte(password), salt, 100_000, keyLenght, sha256.New)
-}*/
 
 //* CLI Logic */
 
@@ -69,7 +62,7 @@ func main() {
 	//* Program Version */
 	appVersion := &semantika.Version{
 		Major: 0,
-		Minor: 2,
+		Minor: 3,
 		Patch: 0,
 	}
 
@@ -85,7 +78,7 @@ func main() {
 		encryptionReplace   bool   // whether to remove the source file after encryption
 		decryptionReplace   bool   // whether to remove the source file after decryption
 
-		implementedAlgorithms = []string{"aes128", "aes192", "aes256"} // all implemented algorithms for encryption and decryption
+		//implementedAlgorithms = []string{"aes128", "aes192", "aes256"} // all implemented algorithms for encryption and decryption
 	)
 	rootCommand := &cobra.Command{ // cloak
 		Use:   "cloak",
@@ -134,15 +127,16 @@ func main() {
 			}
 
 			// check crypto algorithm
-			if !slices.Contains(implementedAlgorithms, encryptionAlgorithm) {
-				fmt.Printf("Unsupported encryption algorithm \"%s\". Implemented algorithms: (%s).", encryptionAlgorithm, strings.Join(implementedAlgorithms, ", "))
+			algo, ok := implementedAlgorithms[encryptionAlgorithm]
+			if !ok {
+				fmt.Printf("Unsupported encryption algorithm \"%s\". Implemented algorithms: (%s).", encryptionAlgorithm, strings.Join(getAlgorithmNames(), ", "))
 				return
 			}
 
 			// generate config from args and flags
 			clk.inputFilePath = args[0]
 			clk.outputFilePath = args[1]
-			clk.cryptoAlgorithm = encryptionAlgorithm
+			clk.cryptoAlgorithm = algo
 			clk.replaceMode = encryptionReplace
 
 			// ask user for password and encrypt
@@ -177,15 +171,16 @@ func main() {
 			}
 
 			// check crypto algorithm
-			if !slices.Contains(implementedAlgorithms, decryptionAlgorithm) {
-				fmt.Printf("Unsupported decryption algorithm \"%s\". Implemented algorithms: (%s).", decryptionAlgorithm, strings.Join(implementedAlgorithms, ", "))
+			algo, ok := implementedAlgorithms[decryptionAlgorithm]
+			if !ok {
+				fmt.Printf("Unsupported decryption algorithm \"%s\". Implemented algorithms: (%s).", decryptionAlgorithm, strings.Join(getAlgorithmNames(), ", "))
 				return
 			}
 
 			// generate config from args and flags
 			clk.inputFilePath = args[0]
 			clk.outputFilePath = args[1]
-			clk.cryptoAlgorithm = decryptionAlgorithm
+			clk.cryptoAlgorithm = algo
 			clk.replaceMode = decryptionReplace
 
 			// ask user for password and decrypt
@@ -200,7 +195,7 @@ func main() {
 		Long:  "Display a list of implemented algorithms for encryption and decryption",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("Implemented algorithms: (%s)\n", strings.Join(implementedAlgorithms, ", "))
+			fmt.Printf("Implemented algorithms: (%s)\n", strings.Join(getAlgorithmNames(), ", "))
 		},
 	}
 	displayVersionCommand := &cobra.Command{ // cloak version
@@ -212,14 +207,16 @@ func main() {
 			fmt.Printf("Cloak v%s by Astrorick\n", appVersion.String())
 		},
 	}
+
+	//* Register Flags and Commands */
 	rootCommand.Flags().BoolVarP(&displayVersion, "version", "v", false, "Display program version")
-	encryptCommand.Flags().StringVarP(&encryptionAlgorithm, "algorithm", "x", "aes256", fmt.Sprintf("Encryption algorithm (%s)", strings.Join(implementedAlgorithms, ", ")))
+	encryptCommand.Flags().StringVarP(&encryptionAlgorithm, "algorithm", "x", "aes256", fmt.Sprintf("Encryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
 	encryptCommand.Flags().BoolVarP(&encryptionReplace, "replace", "r", false, "Remove source file after encryption")
-	decryptCommand.Flags().StringVarP(&decryptionAlgorithm, "algorithm", "x", "aes256", fmt.Sprintf("Decryption algorithm (%s)", strings.Join(implementedAlgorithms, ", ")))
+	decryptCommand.Flags().StringVarP(&decryptionAlgorithm, "algorithm", "x", "aes256", fmt.Sprintf("Decryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
 	decryptCommand.Flags().BoolVarP(&decryptionReplace, "replace", "r", false, "Remove source file after decryption")
 	rootCommand.AddCommand(encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
 
-	// run root command
+	//* Run Root Command */
 	if err := rootCommand.Execute(); err != nil {
 		log.Fatal(err)
 	}
@@ -266,6 +263,17 @@ func confirmOverwrite(filePath string) bool {
 		// repeat question
 		fmt.Print("Invalid answer. Overwrite? (Y/n): ")
 	}
+}
+
+func getAlgorithmNames() []string {
+	algoNames := make([]string, 0, len(implementedAlgorithms))
+	for algoName := range implementedAlgorithms {
+		algoNames = append(algoNames, algoName)
+	}
+
+	slices.Sort(algoNames)
+
+	return algoNames
 }
 
 func requestUserPassword() string {
