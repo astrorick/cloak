@@ -25,7 +25,6 @@ type Cloak struct {
 	outputFilePath string // path to output file
 
 	cryptoAlgorithm CryptoAlgorithm // interface representation of the crypto algorithm to use
-	replaceMode     bool            // whether to remove the source file after ancryption/decryption
 }
 
 type CryptoAlgorithm interface {
@@ -42,16 +41,70 @@ var implementedAlgorithms = map[string]CryptoAlgorithm{
 
 // Encrypt encodes the input file with the specified algorithm and writes the result to the output file.
 func (clk *Cloak) Encrypt(psw string) error {
-	fmt.Printf("Encrypting \"%s\" to \"%s\" using %s. ", clk.inputFilePath, clk.outputFilePath, clk.cryptoAlgorithm)
+	fmt.Printf("Encrypting \"%s\" to \"%s\" using %s.\n", clk.inputFilePath, clk.outputFilePath, clk.cryptoAlgorithm.Name())
+
+	// open input file
+	in, err := os.Open(clk.inputFilePath)
+	if err != nil {
+		return fmt.Errorf("error opening input file: %w", err)
+	}
+	defer in.Close()
+
+	// open output file
+	out, err := os.Create(clk.outputFilePath)
+	if err != nil {
+		return fmt.Errorf("error creating output file: %w", err)
+	}
+	defer out.Close()
+
+	// TODO: generate random salt instead of a fixed one
+	fixedSalt := []byte("TemporaryFixedSalt12345")
+
+	// derive encryption key
+	key, err := clk.cryptoAlgorithm.DeriveKey(psw, fixedSalt)
+	if err != nil {
+		return fmt.Errorf("error generating encryption key: %w", err)
+	}
+
+	// encrypt file
+	if err := clk.cryptoAlgorithm.Encrypt(in, out, key); err != nil {
+		return fmt.Errorf("error encrypting file: %w", err)
+	}
 
 	return nil
 }
 
 // Decrypt decodes the input file with the specified algorithm and writes the result to the output file.
 func (clk *Cloak) Decrypt(psw string) error {
-	fmt.Printf("Decrypting \"%s\" to \"%s\" using %s. ", clk.inputFilePath, clk.outputFilePath, clk.cryptoAlgorithm)
+	fmt.Printf("Decrypting \"%s\" to \"%s\" using %s.\n", clk.inputFilePath, clk.outputFilePath, clk.cryptoAlgorithm.Name())
 
-	// TODO: add logic of decryption
+	// open input file
+	in, err := os.Open(clk.inputFilePath)
+	if err != nil {
+		return fmt.Errorf("error opening input file: %w", err)
+	}
+	defer in.Close()
+
+	// open output file
+	out, err := os.Create(clk.outputFilePath)
+	if err != nil {
+		return fmt.Errorf("error creating output file: %w", err)
+	}
+	defer out.Close()
+
+	// TODO: read salt from file instead of using a fixed one
+	fixedSalt := []byte("TemporaryFixedSalt12345")
+
+	// derive decryption key
+	key, err := clk.cryptoAlgorithm.DeriveKey(psw, fixedSalt)
+	if err != nil {
+		return fmt.Errorf("error generating decryption key: %w", err)
+	}
+
+	// decrypt file
+	if err := clk.cryptoAlgorithm.Decrypt(in, out, key); err != nil {
+		return fmt.Errorf("error decrypting file: %w", err)
+	}
 
 	return nil
 }
@@ -62,7 +115,7 @@ func main() {
 	//* Program Version */
 	appVersion := &semantika.Version{
 		Major: 0,
-		Minor: 3,
+		Minor: 5,
 		Patch: 0,
 	}
 
@@ -77,12 +130,10 @@ func main() {
 		decryptionAlgorithm string // algorithm used for decryption
 		encryptionReplace   bool   // whether to remove the source file after encryption
 		decryptionReplace   bool   // whether to remove the source file after decryption
-
-		//implementedAlgorithms = []string{"aes128", "aes192", "aes256"} // all implemented algorithms for encryption and decryption
 	)
 	rootCommand := &cobra.Command{ // cloak
 		Use:   "cloak",
-		Short: "Cloak lets you encrypt and decrypt files.",
+		Short: "Cloak allows you to encrypt and decrypt files",
 		Run: func(cmd *cobra.Command, args []string) {
 			// display program version and exit if flag set
 			if displayVersion {
@@ -90,24 +141,23 @@ func main() {
 				os.Exit(0)
 			}
 
-			// display help if no args provided
+			// display help and exit if no args provided
 			if len(args) == 0 {
 				_ = cmd.Help()
 				os.Exit(0)
 			}
 		},
 		CompletionOptions: cobra.CompletionOptions{
-			// this disables the "completion" command which is shown dy default
-			DisableDefaultCmd: true,
+			DisableDefaultCmd: true, // this disables the "completion" command which is shown dy default
 		},
 	}
 	encryptCommand := &cobra.Command{ // cloak enc
 		Use:   "enc input output [-x algorithm] [-r]",
 		Short: "Encrypt files",
-		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -x flag (defaults to aes256). Write the result to the output file. If the optional -r flag is passed, the source file is then deleted.",
+		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -x flag and write the result to the output file. If the optional -r flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			// check if input file inputExists
+			// check if input file exists
 			inputExists, err := fileExists(args[0])
 			if err != nil {
 				log.Fatal(err)
@@ -130,28 +180,34 @@ func main() {
 			algo, ok := implementedAlgorithms[encryptionAlgorithm]
 			if !ok {
 				fmt.Printf("Unsupported encryption algorithm \"%s\". Implemented algorithms: (%s).", encryptionAlgorithm, strings.Join(getAlgorithmNames(), ", "))
-				return
+				os.Exit(1)
 			}
 
 			// generate config from args and flags
 			clk.inputFilePath = args[0]
 			clk.outputFilePath = args[1]
 			clk.cryptoAlgorithm = algo
-			clk.replaceMode = encryptionReplace
 
 			// ask user for password and encrypt
 			if err := clk.Encrypt(requestUserPassword()); err != nil {
 				log.Fatal(err)
+			}
+
+			// remove original file if flag was set
+			if encryptionReplace {
+				if err := os.Remove(clk.inputFilePath); err != nil {
+					log.Fatal(err)
+				}
 			}
 		},
 	}
 	decryptCommand := &cobra.Command{ // cloak dec
 		Use:   "dec input output [-x algorithm] [-r]",
 		Short: "Decrypt files",
-		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -x flag (defaults to aes256). Write the result to the output file. If the optional -r flag is passed, the source file is then deleted.",
+		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -x flag and write the result to the output file. If the optional -r flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			// check if input file inputExists
+			// check if input file exists
 			inputExists, err := fileExists(args[0])
 			if err != nil {
 				log.Fatal(err)
@@ -174,18 +230,24 @@ func main() {
 			algo, ok := implementedAlgorithms[decryptionAlgorithm]
 			if !ok {
 				fmt.Printf("Unsupported decryption algorithm \"%s\". Implemented algorithms: (%s).", decryptionAlgorithm, strings.Join(getAlgorithmNames(), ", "))
-				return
+				os.Exit(1)
 			}
 
 			// generate config from args and flags
 			clk.inputFilePath = args[0]
 			clk.outputFilePath = args[1]
 			clk.cryptoAlgorithm = algo
-			clk.replaceMode = decryptionReplace
 
 			// ask user for password and decrypt
 			if err := clk.Decrypt(requestUserPassword()); err != nil {
 				log.Fatal(err)
+			}
+
+			// remove original file if flag was set
+			if decryptionReplace {
+				if err := os.Remove(clk.inputFilePath); err != nil {
+					log.Fatal(err)
+				}
 			}
 		},
 	}
@@ -270,8 +332,6 @@ func getAlgorithmNames() []string {
 	for algoName := range implementedAlgorithms {
 		algoNames = append(algoNames, algoName)
 	}
-
-	slices.Sort(algoNames)
 
 	return algoNames
 }
