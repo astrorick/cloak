@@ -10,7 +10,7 @@ import (
 	"io"
 )
 
-type AES256 struct {
+type AES192 struct {
 	name        string
 	saltSize    int
 	ivSize      int
@@ -18,22 +18,22 @@ type AES256 struct {
 	keyHashIter int
 }
 
-func NewAES256() *AES256 {
-	return &AES256{
-		name: "aes256", // algorithm name
+func NewAES192() *AES192 {
+	return &AES192{
+		name: "aes192", // algorithm name
 
 		saltSize:    16,      // size of salt used for key derivation
 		ivSize:      12,      // size of nonce to be used during encryption / decryption
-		keySize:     32,      // size of encryption / decryption key
+		keySize:     24,      // size of encryption / decryption key
 		keyHashIter: 2 << 16, // number of hashes for key derivation
 	}
 }
 
-func (algo *AES256) Name() string {
+func (algo *AES192) Name() string {
 	return algo.name
 }
 
-func (algo *AES256) Seal(input io.Reader, output io.Writer, psw string) error {
+func (algo *AES192) Seal(input io.Reader, output io.Writer, psw string) error {
 	// read source file
 	plainData, err := io.ReadAll(input)
 	if err != nil {
@@ -87,7 +87,7 @@ func (algo *AES256) Seal(input io.Reader, output io.Writer, psw string) error {
 	return nil
 }
 
-func (algo *AES256) Unseal(input io.Reader, output io.Writer, psw string) error {
+func (algo *AES192) Unseal(input io.Reader, output io.Writer, psw string) error {
 	// read salt from input file
 	salt := make([]byte, algo.saltSize)
 	if _, err := io.ReadFull(input, salt); err != nil {
@@ -138,6 +138,6 @@ func (algo *AES256) Unseal(input io.Reader, output io.Writer, psw string) error 
 	return nil
 }
 
-func (algo *AES256) deriveKey(psw string, salt []byte) ([]byte, error) {
+func (algo *AES192) deriveKey(psw string, salt []byte) ([]byte, error) {
 	return pbkdf2.Key(sha512.New, psw, salt, algo.keyHashIter, algo.keySize)
 }

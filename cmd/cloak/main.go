@@ -33,10 +33,15 @@ type CryptoAlgorithm interface {
 	Unseal(input io.Reader, output io.Writer, psw string) error
 }
 
-var defaultAlgorithm = "aes128" // change this to change default algorithm
+var defaultAlgorithm = "aes256" // change this to change default algorithm
 var implementedAlgorithms = map[string]CryptoAlgorithm{
+	//* Advanced Encryption Standard (AES) Family */
 	"aes128": algos.NewAES128(),
+	"aes192": algos.NewAES192(),
 	"aes256": algos.NewAES256(),
+
+	//* Blowfish Family */
+	// TODO
 }
 
 // Encrypt encodes the input file with the specified algorithm and writes the result to the output file.
