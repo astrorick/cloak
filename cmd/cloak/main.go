@@ -41,7 +41,11 @@ var implementedAlgorithms = map[string]CryptoAlgorithm{
 	"aes256": algos.NewAES256(),
 
 	//* Blowfish Family */
-	// TODO
+	// TODO "blowfish": algos.NewBlowfish(),
+
+	//* ChaCha20 Family */
+	// TODO "chacha20": algos.NewChaCha20(),
+	"chacha20poly1305": algos.NewChaCha20Poly1305(),
 }
 
 // Encrypt encodes the input file with the specified algorithm and writes the result to the output file.

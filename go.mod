@@ -5,6 +5,7 @@ go 1.24.4
 require (
 	github.com/astrorick/semantika v0.0.0-20250617110007-847eca2c42d8
 	github.com/spf13/cobra v1.9.1
+	golang.org/x/crypto v0.39.0
 	golang.org/x/term v0.32.0
 )
 

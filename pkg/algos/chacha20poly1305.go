@@ -1,16 +1,16 @@
 package algos
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/pbkdf2"
 	"crypto/rand"
 	"crypto/sha512"
 	"fmt"
 	"io"
+
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
-type AES128 struct {
+type ChaCha20Poly1305 struct {
 	name string
 
 	saltSize  int
@@ -20,23 +20,23 @@ type AES128 struct {
 	keyHashIter int
 }
 
-func NewAES128() *AES128 {
-	return &AES128{
-		name: "aes128", // algorithm name
+func NewChaCha20Poly1305() *ChaCha20Poly1305 {
+	return &ChaCha20Poly1305{
+		name: "chacha20poly1305", // algorithm name
 
 		saltSize:  16, // size of salt used for key derivation
 		nonceSize: 12, // size of nonce to be used during encryption / decryption
 
-		keySize:     16,      // size of encryption / decryption key
+		keySize:     32,      // size of encryption / decryption key
 		keyHashIter: 2 << 16, // number of hashes for key derivation
 	}
 }
 
-func (algo *AES128) Name() string {
+func (algo *ChaCha20Poly1305) Name() string {
 	return algo.name
 }
 
-func (algo *AES128) Seal(input io.Reader, output io.Writer, psw string) error {
+func (algo *ChaCha20Poly1305) Seal(input io.Reader, output io.Writer, psw string) error {
 	// read source file
 	plainData, err := io.ReadAll(input)
 	if err != nil {
@@ -61,20 +61,14 @@ func (algo *AES128) Seal(input io.Reader, output io.Writer, psw string) error {
 		return fmt.Errorf("error generating random nonce: %w", err)
 	}
 
-	// create AES cipher with key
-	block, err := aes.NewCipher(key)
+	// create AEAD with key
+	aead, err := chacha20poly1305.New(key)
 	if err != nil {
-		return fmt.Errorf("error creating AES cipher block: %w", err)
-	}
-
-	// wrap cipher in GCM
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return fmt.Errorf("error wrapping cipher block in GCM: %w", err)
+		return fmt.Errorf("error creating AEAD: %w", err)
 	}
 
 	// encrypt data
-	cipherData := aesgcm.Seal(nil, nonce, plainData, nil)
+	cipherData := aead.Seal(nil, nonce, plainData, nil)
 
 	// write salt + iv + ciphertext to output file
 	if _, err := output.Write(salt); err != nil {
@@ -90,7 +84,7 @@ func (algo *AES128) Seal(input io.Reader, output io.Writer, psw string) error {
 	return nil
 }
 
-func (algo *AES128) Unseal(input io.Reader, output io.Writer, psw string) error {
+func (algo *ChaCha20Poly1305) Unseal(input io.Reader, output io.Writer, psw string) error {
 	// read salt from input file
 	salt := make([]byte, algo.saltSize)
 	if _, err := io.ReadFull(input, salt); err != nil {
@@ -115,20 +109,14 @@ func (algo *AES128) Unseal(input io.Reader, output io.Writer, psw string) error 
 		return fmt.Errorf("error reading input file: %w", err)
 	}
 
-	// create AES cipher with key
-	block, err := aes.NewCipher(key)
+	// create AEAD with key
+	aead, err := chacha20poly1305.New(key)
 	if err != nil {
-		return fmt.Errorf("error creating AES cipher block: %w", err)
-	}
-
-	// wrap cipher in GCM
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return fmt.Errorf("error wrapping cipher block in GCM: %w", err)
+		return fmt.Errorf("error creating chacha20poly1305: %w", err)
 	}
 
 	// decrypt data
-	plainData, err := aesgcm.Open(nil, nonce, cipherData, nil)
+	plainData, err := aead.Open(nil, nonce, cipherData, nil)
 	if err != nil {
 		return fmt.Errorf("decryption failed or data corrupted: %w", err)
 	}
@@ -141,6 +129,6 @@ func (algo *AES128) Unseal(input io.Reader, output io.Writer, psw string) error 
 	return nil
 }
 
-func (algo *AES128) deriveKey(psw string, salt []byte) ([]byte, error) {
+func (algo *ChaCha20Poly1305) deriveKey(psw string, salt []byte) ([]byte, error) {
 	return pbkdf2.Key(sha512.New, psw, salt, algo.keyHashIter, algo.keySize)
 }

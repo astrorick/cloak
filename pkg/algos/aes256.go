@@ -11,9 +11,11 @@ import (
 )
 
 type AES256 struct {
-	name        string
-	saltSize    int
-	ivSize      int
+	name string
+
+	saltSize  int
+	nonceSize int
+
 	keySize     int
 	keyHashIter int
 }
@@ -22,8 +24,9 @@ func NewAES256() *AES256 {
 	return &AES256{
 		name: "aes256", // algorithm name
 
-		saltSize:    16,      // size of salt used for key derivation
-		ivSize:      12,      // size of nonce to be used during encryption / decryption
+		saltSize:  16, // size of salt used for key derivation
+		nonceSize: 12, // size of nonce to be used during encryption / decryption
+
 		keySize:     32,      // size of encryption / decryption key
 		keyHashIter: 2 << 16, // number of hashes for key derivation
 	}
@@ -52,9 +55,9 @@ func (algo *AES256) Seal(input io.Reader, output io.Writer, psw string) error {
 		return fmt.Errorf("error generating encryption key: %w", err)
 	}
 
-	// generate random nonce (iv)
-	iv := make([]byte, algo.ivSize)
-	if _, err := rand.Read(iv); err != nil {
+	// generate random nonce
+	nonce := make([]byte, algo.nonceSize)
+	if _, err := rand.Read(nonce); err != nil {
 		return fmt.Errorf("error generating random nonce: %w", err)
 	}
 
@@ -71,13 +74,13 @@ func (algo *AES256) Seal(input io.Reader, output io.Writer, psw string) error {
 	}
 
 	// encrypt data
-	cipherData := aesgcm.Seal(nil, iv, plainData, nil)
+	cipherData := aesgcm.Seal(nil, nonce, plainData, nil)
 
 	// write salt + iv + ciphertext to output file
 	if _, err := output.Write(salt); err != nil {
 		return fmt.Errorf("error writing salt to output file: %w", err)
 	}
-	if _, err := output.Write(iv); err != nil {
+	if _, err := output.Write(nonce); err != nil {
 		return fmt.Errorf("error writing nonce to output file: %w", err)
 	}
 	if _, err := output.Write(cipherData); err != nil {
@@ -100,9 +103,9 @@ func (algo *AES256) Unseal(input io.Reader, output io.Writer, psw string) error 
 		return fmt.Errorf("error generating decryption key: %w", err)
 	}
 
-	// read nonce (iv) from input file
-	iv := make([]byte, algo.ivSize)
-	if _, err := io.ReadFull(input, iv); err != nil {
+	// read nonce from input file
+	nonce := make([]byte, algo.nonceSize)
+	if _, err := io.ReadFull(input, nonce); err != nil {
 		return fmt.Errorf("error reading nonce from input file: %w", err)
 	}
 
@@ -125,7 +128,7 @@ func (algo *AES256) Unseal(input io.Reader, output io.Writer, psw string) error 
 	}
 
 	// decrypt data
-	plainData, err := aesgcm.Open(nil, iv, cipherData, nil)
+	plainData, err := aesgcm.Open(nil, nonce, cipherData, nil)
 	if err != nil {
 		return fmt.Errorf("decryption failed or data corrupted: %w", err)
 	}
