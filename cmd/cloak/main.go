@@ -324,6 +324,8 @@ func getAlgorithmNames() []string {
 		algoNames = append(algoNames, algoName)
 	}
 
+	slices.Sort(algoNames)
+
 	return algoNames
 }
 
