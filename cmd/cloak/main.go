@@ -340,7 +340,7 @@ func requestUserPassword() string {
 		fmt.Println()
 		providedPassword := string(bytePassword)
 
-		// check password lenght
+		// check password length
 		if len(providedPassword) < 8 {
 			fmt.Println("Password too short. Minimum 8 characters.")
 			continue
