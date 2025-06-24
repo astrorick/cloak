@@ -106,7 +106,7 @@ func main() {
 	//* Program Version */
 	appVersion := &semantika.Version{
 		Major: 0,
-		Minor: 7,
+		Minor: 1,
 		Patch: 0,
 	}
 

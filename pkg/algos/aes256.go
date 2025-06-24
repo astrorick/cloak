@@ -76,7 +76,7 @@ func (algo *AES256) Seal(input io.Reader, output io.Writer, psw string) error {
 	// encrypt data
 	cipherData := aesgcm.Seal(nil, nonce, plainData, nil)
 
-	// write salt + iv + ciphertext to output file
+	// write salt + nonce + ciphertext to output file
 	if _, err := output.Write(salt); err != nil {
 		return fmt.Errorf("error writing salt to output file: %w", err)
 	}
