@@ -14,7 +14,7 @@ Here's a list of currently available features:
 
 Here's a list of planned features I'm currently working on:
 
-- [ ] Implement more cryptography algorithms
+- [ ] Implement additional cryptography algorithms
 - [x] Improve salt generation logic and storage
 - [ ] Implement successful decryption check
 
