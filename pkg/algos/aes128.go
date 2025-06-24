@@ -1,22 +1,31 @@
 package algos
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/pbkdf2"
+	"crypto/rand"
 	"crypto/sha512"
+	"fmt"
 	"io"
 )
 
 type AES128 struct {
-	name    string
-	numIter int
-	keySize int
+	name        string
+	saltSize    int
+	ivSize      int
+	keySize     int
+	keyHashIter int
 }
 
 func NewAES128() *AES128 {
 	return &AES128{
-		name:    "aes128",
-		numIter: 2 << 16,
-		keySize: 16,
+		name: "aes128", // algorithm name
+
+		saltSize:    16,      // size of salt used for key derivation
+		ivSize:      12,      // size of nonce to be used during encryption / decryption
+		keySize:     16,      // size of encryption / decryption key
+		keyHashIter: 2 << 16, // number of hashes for key derivation
 	}
 }
 
@@ -24,14 +33,111 @@ func (algo *AES128) Name() string {
 	return algo.name
 }
 
-func (algo *AES128) DeriveKey(psw string, salt []byte) ([]byte, error) {
-	return pbkdf2.Key(sha512.New, psw, salt, algo.numIter, algo.keySize)
-}
+func (algo *AES128) Seal(input io.Reader, output io.Writer, psw string) error {
+	// read source file
+	plainData, err := io.ReadAll(input)
+	if err != nil {
+		return fmt.Errorf("error reading input file: %w", err)
+	}
 
-func (algo *AES128) Encrypt(input io.Reader, output io.Writer, key []byte) error {
+	// generate random salt for key derivation
+	salt := make([]byte, algo.saltSize)
+	if _, err := rand.Read(salt); err != nil {
+		return fmt.Errorf("error generating random salt: %w", err)
+	}
+
+	// derive encryption key from psw and salt
+	key, err := algo.deriveKey(psw, salt)
+	if err != nil {
+		return fmt.Errorf("error generating encryption key: %w", err)
+	}
+
+	// generate random nonce (iv)
+	iv := make([]byte, algo.ivSize)
+	if _, err := rand.Read(iv); err != nil {
+		return fmt.Errorf("error generating random nonce: %w", err)
+	}
+
+	// create AES cipher with key
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return fmt.Errorf("error creating AES cipher block: %w", err)
+	}
+
+	// wrap cipher in GCM
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return fmt.Errorf("error wrapping cipher block in GCM: %w", err)
+	}
+
+	// encrypt data
+	cipherData := aesgcm.Seal(nil, iv, plainData, nil)
+
+	// write salt + iv + ciphertext to output file
+	if _, err := output.Write(salt); err != nil {
+		return fmt.Errorf("error writing salt to output file: %w", err)
+	}
+	if _, err := output.Write(iv); err != nil {
+		return fmt.Errorf("error writing nonce to output file: %w", err)
+	}
+	if _, err := output.Write(cipherData); err != nil {
+		return fmt.Errorf("error writing ciphertext to output file: %w", err)
+	}
+
 	return nil
 }
 
-func (algo *AES128) Decrypt(input io.Reader, output io.Writer, key []byte) error {
+func (algo *AES128) Unseal(input io.Reader, output io.Writer, psw string) error {
+	// read salt from input file
+	salt := make([]byte, algo.saltSize)
+	if _, err := io.ReadFull(input, salt); err != nil {
+		return fmt.Errorf("error reading salt from input file: %w", err)
+	}
+
+	// derive encryption key from psw and salt
+	key, err := algo.deriveKey(psw, salt)
+	if err != nil {
+		return fmt.Errorf("error generating decryption key: %w", err)
+	}
+
+	// read nonce (iv) from input file
+	iv := make([]byte, algo.ivSize)
+	if _, err := io.ReadFull(input, iv); err != nil {
+		return fmt.Errorf("error reading nonce from input file: %w", err)
+	}
+
+	// read the remaining input file (cipher data)
+	cipherData, err := io.ReadAll(input)
+	if err != nil {
+		return fmt.Errorf("error reading input file: %w", err)
+	}
+
+	// create AES cipher with key
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return fmt.Errorf("error creating AES cipher block: %w", err)
+	}
+
+	// wrap cipher in GCM
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return fmt.Errorf("error wrapping cipher block in GCM: %w", err)
+	}
+
+	// decrypt data
+	plainData, err := aesgcm.Open(nil, iv, cipherData, nil)
+	if err != nil {
+		return fmt.Errorf("decryption failed or data corrupted: %w", err)
+	}
+
+	// write decrypted data to output file
+	if _, err := output.Write(plainData); err != nil {
+		return fmt.Errorf("error writing decrypted data to output file: %w", err)
+	}
+
 	return nil
+}
+
+func (algo *AES128) deriveKey(psw string, salt []byte) ([]byte, error) {
+	return pbkdf2.Key(sha512.New, psw, salt, algo.keyHashIter, algo.keySize)
 }

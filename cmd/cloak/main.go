@@ -29,9 +29,8 @@ type Cloak struct {
 
 type CryptoAlgorithm interface {
 	Name() string
-	DeriveKey(psw string, salt []byte) ([]byte, error)
-	Encrypt(input io.Reader, output io.Writer, key []byte) error
-	Decrypt(input io.Reader, output io.Writer, key []byte) error
+	Seal(input io.Reader, output io.Writer, psw string) error
+	Unseal(input io.Reader, output io.Writer, psw string) error
 }
 
 var defaultAlgorithm = "aes128" // change this to change default algorithm
@@ -58,17 +57,8 @@ func (clk *Cloak) Encrypt(psw string) error {
 	}
 	defer out.Close()
 
-	// TODO: generate random salt instead of a fixed one
-	fixedSalt := []byte("TemporaryFixedSalt12345")
-
-	// derive encryption key
-	key, err := clk.cryptoAlgorithm.DeriveKey(psw, fixedSalt)
-	if err != nil {
-		return fmt.Errorf("error generating encryption key: %w", err)
-	}
-
 	// encrypt file
-	if err := clk.cryptoAlgorithm.Encrypt(in, out, key); err != nil {
+	if err := clk.cryptoAlgorithm.Seal(in, out, psw); err != nil {
 		return fmt.Errorf("error encrypting file: %w", err)
 	}
 
@@ -93,17 +83,8 @@ func (clk *Cloak) Decrypt(psw string) error {
 	}
 	defer out.Close()
 
-	// TODO: read salt from file instead of using a fixed one
-	fixedSalt := []byte("TemporaryFixedSalt12345")
-
-	// derive decryption key
-	key, err := clk.cryptoAlgorithm.DeriveKey(psw, fixedSalt)
-	if err != nil {
-		return fmt.Errorf("error generating decryption key: %w", err)
-	}
-
 	// decrypt file
-	if err := clk.cryptoAlgorithm.Decrypt(in, out, key); err != nil {
+	if err := clk.cryptoAlgorithm.Unseal(in, out, psw); err != nil {
 		return fmt.Errorf("error decrypting file: %w", err)
 	}
 
@@ -116,7 +97,7 @@ func main() {
 	//* Program Version */
 	appVersion := &semantika.Version{
 		Major: 0,
-		Minor: 5,
+		Minor: 7,
 		Patch: 0,
 	}
 

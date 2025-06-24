@@ -28,10 +28,10 @@ func (algo *AES256) DeriveKey(psw string, salt []byte) ([]byte, error) {
 	return pbkdf2.Key(sha512.New, psw, salt, algo.numIter, algo.keySize)
 }
 
-func (algo *AES256) Encrypt(input io.Reader, output io.Writer, key []byte) error {
+func (algo *AES256) Seal(input io.Reader, output io.Writer, psw string) error {
 	return nil
 }
 
-func (algo *AES256) Decrypt(input io.Reader, output io.Writer, key []byte) error {
+func (algo *AES256) Unseal(input io.Reader, output io.Writer, psw string) error {
 	return nil
 }
