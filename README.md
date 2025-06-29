@@ -13,7 +13,7 @@ _Cloak_ is a minimal CLI tool for encrypting and decrypting files.
 Here's a list of currently available features:
 
 - Simple file encryption and decryption
-- Supports multiple cryptography algorithms
+- Supports multiple state-of-the-art cryptography algorithms
 - Lightweight and easy to use
 
 ## Work In Progress
@@ -21,28 +21,80 @@ Here's a list of currently available features:
 Here's a list of planned features I'm currently working on:
 
 - [ ] Implement additional cryptography algorithms
-- [x] Improve salt generation logic and storage
 - [ ] Implement successful decryption check
 
-## Usage
+## Quick Start
 
-**Encrypting a file**
+The `AES256` algorithm will be selected by default when not explicitly specified by the `-x` flag.
+
+**Encryption**
 
 ```
 cloak enc source_file encrypted_file
 ```
 
-**Decrypting a file**
+**Decryption**
 
 ```
 cloak dec encrypted_file output_file
 ```
 
-**Program help**
+**Help**
 
 ```
 cloak help
 ```
+
+## Detailed Usage
+
+```
+cloak [command] [flags]
+```
+
+**Available Commands:**
+- `enc`: encrypt the input file into the output file using the optionally specified algorithm (defaults to `aes256`)
+
+  ```
+  cloak enc input_file output_file [flags]
+  ```
+
+  **Available Flags:**
+  - `-h` or `--help`: display the encryption help message
+  - `-x` or `--algorithm`: specify the encryption algorithm (`aes128`, `aes192`, `aes256` or `chacha20poly1305`)
+  - `-r` or `--replace`: remove input file after encryption
+
+- `dec`: decrypt the input file into the output file using the optionally specified algorithm (defaults to `aes256`)
+
+  ```
+  cloak dec input_file output_file [flags]
+  ```
+
+  **Available Flags:**
+  - `-h` or `--help`: display the decryption help message
+  - `-x` or `--algorithm`: specify the decryption algorithm (`aes128`, `aes192`, `aes256` or `chacha20poly1305`)
+  - `-r` or `--replace`: remove input file after encryption
+
+- `version`: print current program version (equivalent to the `-v` and `--version` flags)
+
+- `help`: display the general help message (equivalent to the `-h` and `--help` flags)
+
+**Available Flags:**
+- `-v` or `--version`: print current program version (equivalent to the `version` command)
+- `-h` or `--help`: display the general help message (equivalent to the `help` command)
+
+## Usage Examples
+
+1. Encrypt `my_plaintext_file.txt` using the `chacha20poly1305` algorithm. Write the result to `my_encrypted_file.clk` and _remove_ the source file if successful:
+
+   ```
+   cloak enc my_plaintext_file.txt my_encrypted_file.clk -x chacha20poly1305 -r
+   ```
+
+2. Decrypt `secret.clk` using the `aes192` algorithm. Write the result to `selfie.jpg` but _keep_ the source file:
+
+   ```
+   cloak dec secret.clk selfie.jpg -x aes192
+   ```
 
 ## Contributing
 
