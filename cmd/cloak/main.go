@@ -107,7 +107,7 @@ func main() {
 	appVersion := &semantika.Version{
 		Major: 0,
 		Minor: 1,
-		Patch: 1,
+		Patch: 2,
 	}
 
 	//* Default Program Config */
@@ -117,12 +117,13 @@ func main() {
 	var (
 		displayVersion bool // whether to display program version
 
-		encryptionAlgorithm string // algorithm used for encryption
-		decryptionAlgorithm string // algorithm used for decryption
-		encryptionReplace   bool   // whether to remove the source file after encryption
-		decryptionReplace   bool   // whether to remove the source file after decryption
+		encryptionAlgorithmName string // name of algorithm used for encryption
+		encryptionReplace       bool   // whether to remove the source file after encryption
+
+		decryptionAlgorithmName string // name of algorithm used for decryption
+		decryptionReplace       bool   // whether to remove the source file after decryption
 	)
-	rootCommand := &cobra.Command{ // cloak
+	rootCommand := &cobra.Command{
 		Use:   "cloak",
 		Short: "Cloak allows you to encrypt and decrypt files",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -142,45 +143,50 @@ func main() {
 			DisableDefaultCmd: true, // this disables the "completion" command which is shown dy default
 		},
 	}
-	encryptCommand := &cobra.Command{ // cloak enc
-		Use:   "enc input output [-x algorithm] [-r]",
+	encryptCommand := &cobra.Command{
+		Use:   "enc input output",
 		Short: "Encrypt files",
 		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -x flag and write the result to the output file. If the optional -r flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
+			// read input and output file paths from arguments
+			encryptionInputFilePath := args[0]
+			encryptionOutputFilePath := args[1]
+
 			// check if input file exists
-			inputExists, err := fileExists(args[0])
+			inputExists, err := fileExists(encryptionInputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
 			if !inputExists {
-				log.Fatalf("Input file \"%s\" does not exist.\n", args[0])
+				log.Fatalf("Input file \"%s\" does not exist.\n", encryptionInputFilePath)
 			}
 
 			// check that output file does not already exist
-			outputExists, err := fileExists(args[1])
+			outputExists, err := fileExists(encryptionOutputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
-			if outputExists && !confirmOverwrite(args[1]) {
+			if outputExists && !confirmOverwrite(encryptionOutputFilePath) {
 				fmt.Println("Operation cancelled by user.")
 				os.Exit(0)
 			}
 
 			// check crypto algorithm
-			algo, ok := implementedAlgorithms[encryptionAlgorithm]
+			encryptionAlgorithm, ok := implementedAlgorithms[encryptionAlgorithmName]
 			if !ok {
-				fmt.Printf("Unsupported encryption algorithm \"%s\". Implemented algorithms: (%s).", encryptionAlgorithm, strings.Join(getAlgorithmNames(), ", "))
+				fmt.Printf("Unsupported encryption algorithm \"%s\". Implemented algorithms: (%s).", encryptionAlgorithmName, strings.Join(getAlgorithmNames(), ", "))
 				os.Exit(1)
 			}
 
 			// generate config from args and flags
-			clk.inputFilePath = args[0]
-			clk.outputFilePath = args[1]
-			clk.cryptoAlgorithm = algo
+			clk.inputFilePath = encryptionInputFilePath
+			clk.outputFilePath = encryptionOutputFilePath
+			clk.cryptoAlgorithm = encryptionAlgorithm
 
 			// ask user for password and encrypt
 			if err := clk.Encrypt(requestUserPassword()); err != nil {
+				_ = os.Remove(clk.outputFilePath)
 				log.Fatal(err)
 			}
 
@@ -192,45 +198,50 @@ func main() {
 			}
 		},
 	}
-	decryptCommand := &cobra.Command{ // cloak dec
-		Use:   "dec input output [-x algorithm] [-r]",
+	decryptCommand := &cobra.Command{
+		Use:   "dec input output",
 		Short: "Decrypt files",
 		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -x flag and write the result to the output file. If the optional -r flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
+			// read input and output file paths from arguments
+			decryptionInputFilePath := args[0]
+			decryptionOutputFilePath := args[1]
+
 			// check if input file exists
-			inputExists, err := fileExists(args[0])
+			inputExists, err := fileExists(decryptionInputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
 			if !inputExists {
-				log.Fatalf("Input file \"%s\" does not exist.\n", args[0])
+				log.Fatalf("Input file \"%s\" does not exist.\n", decryptionInputFilePath)
 			}
 
 			// check that output file does not already exist
-			outputExists, err := fileExists(args[1])
+			outputExists, err := fileExists(decryptionOutputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
-			if outputExists && !confirmOverwrite(args[1]) {
+			if outputExists && !confirmOverwrite(decryptionOutputFilePath) {
 				fmt.Println("Operation cancelled by user.")
 				os.Exit(0)
 			}
 
 			// check crypto algorithm
-			algo, ok := implementedAlgorithms[decryptionAlgorithm]
+			decryptionAlgorithm, ok := implementedAlgorithms[decryptionAlgorithmName]
 			if !ok {
-				fmt.Printf("Unsupported decryption algorithm \"%s\". Implemented algorithms: (%s).", decryptionAlgorithm, strings.Join(getAlgorithmNames(), ", "))
+				fmt.Printf("Unsupported decryption algorithm \"%s\". Implemented algorithms: (%s).", decryptionAlgorithmName, strings.Join(getAlgorithmNames(), ", "))
 				os.Exit(1)
 			}
 
 			// generate config from args and flags
-			clk.inputFilePath = args[0]
-			clk.outputFilePath = args[1]
-			clk.cryptoAlgorithm = algo
+			clk.inputFilePath = decryptionInputFilePath
+			clk.outputFilePath = decryptionOutputFilePath
+			clk.cryptoAlgorithm = decryptionAlgorithm
 
 			// ask user for password and decrypt
 			if err := clk.Decrypt(requestUserPassword()); err != nil {
+				_ = os.Remove(clk.outputFilePath)
 				log.Fatal(err)
 			}
 
@@ -242,7 +253,7 @@ func main() {
 			}
 		},
 	}
-	displayAlgosCommand := &cobra.Command{ // cloak algos
+	displayAlgosCommand := &cobra.Command{
 		Use:   "algos",
 		Short: "Display implemented algorithms",
 		Long:  "Display a list of implemented algorithms for encryption and decryption",
@@ -251,7 +262,7 @@ func main() {
 			fmt.Printf("Implemented algorithms: (%s)\n", strings.Join(getAlgorithmNames(), ", "))
 		},
 	}
-	displayVersionCommand := &cobra.Command{ // cloak version
+	displayVersionCommand := &cobra.Command{
 		Use:   "version",
 		Short: "Display program version",
 		Long:  "Display the current version of this program",
@@ -263,9 +274,9 @@ func main() {
 
 	//* Register Flags and Commands */
 	rootCommand.Flags().BoolVarP(&displayVersion, "version", "v", false, "Display program version")
-	encryptCommand.Flags().StringVarP(&encryptionAlgorithm, "algorithm", "x", defaultAlgorithm, fmt.Sprintf("Encryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
+	encryptCommand.Flags().StringVarP(&encryptionAlgorithmName, "algorithm", "x", defaultAlgorithm, fmt.Sprintf("Encryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
 	encryptCommand.Flags().BoolVarP(&encryptionReplace, "replace", "r", false, "Remove source file after encryption")
-	decryptCommand.Flags().StringVarP(&decryptionAlgorithm, "algorithm", "x", defaultAlgorithm, fmt.Sprintf("Decryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
+	decryptCommand.Flags().StringVarP(&decryptionAlgorithmName, "algorithm", "x", defaultAlgorithm, fmt.Sprintf("Decryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
 	decryptCommand.Flags().BoolVarP(&decryptionReplace, "replace", "r", false, "Remove source file after decryption")
 	rootCommand.AddCommand(encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
 
