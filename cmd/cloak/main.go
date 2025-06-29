@@ -46,6 +46,9 @@ var implementedAlgorithms = map[string]CryptoAlgorithm{
 	//* ChaCha20 Family */
 	// TODO "chacha20": algos.NewChaCha20(),
 	"chacha20poly1305": algos.NewChaCha20Poly1305(),
+
+	//* Ascon Family */
+	// TODO: "ascon": algos.NewAscon(),
 }
 
 // Encrypt encodes the input file with the specified algorithm and writes the result to the output file.
@@ -106,8 +109,8 @@ func main() {
 	//* Program Version */
 	appVersion := &semantika.Version{
 		Major: 0,
-		Minor: 1,
-		Patch: 2,
+		Minor: 2,
+		Patch: 0,
 	}
 
 	//* Default Program Config */

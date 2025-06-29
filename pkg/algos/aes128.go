@@ -3,21 +3,23 @@ package algos
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/pbkdf2"
 	"crypto/rand"
-	"crypto/sha512"
 	"fmt"
 	"io"
+
+	"golang.org/x/crypto/argon2"
 )
 
 type AES128 struct {
 	name string
 
-	saltSize  int
-	nonceSize int
+	saltSize  uint64
+	nonceSize uint64
 
-	keySize     int
-	keyHashIter int
+	keyTime    uint32
+	keyMemory  uint32
+	keyThreads uint8
+	keySize    uint32
 }
 
 func NewAES128() *AES128 {
@@ -27,8 +29,10 @@ func NewAES128() *AES128 {
 		saltSize:  16, // size of salt used for key derivation
 		nonceSize: 12, // size of nonce to be used during encryption / decryption
 
-		keySize:     16,      // size of encryption / decryption key
-		keyHashIter: 2 << 16, // number of hashes for key derivation
+		keyTime:    8,          // number of passes over the memory
+		keyMemory:  128 * 1024, // KiB of RAM to use during key derivation
+		keyThreads: 4,          // CPU threads to use during key derivation
+		keySize:    16,         // size of encryption / decryption key
 	}
 }
 
@@ -142,5 +146,5 @@ func (algo *AES128) Unseal(input io.Reader, output io.Writer, psw string) error 
 }
 
 func (algo *AES128) deriveKey(psw string, salt []byte) ([]byte, error) {
-	return pbkdf2.Key(sha512.New, psw, salt, algo.keyHashIter, algo.keySize)
+	return argon2.IDKey([]byte(psw), salt, algo.keyTime, algo.keyMemory, algo.keyThreads, algo.keySize), nil
 }
