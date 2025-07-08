@@ -39,6 +39,10 @@ func (algo *ChaCha20Poly1305) Name() string {
 	return algo.name
 }
 
+func (algo *ChaCha20Poly1305) Description() string {
+	return "ChaCha20 with Poly1305 authentication"
+}
+
 func (algo *ChaCha20Poly1305) Seal(input io.Reader, output io.Writer, psw string) error {
 	// read source file
 	plainData, err := io.ReadAll(input)

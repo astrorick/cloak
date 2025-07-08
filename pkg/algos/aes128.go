@@ -40,6 +40,10 @@ func (algo *AES128) Name() string {
 	return algo.name
 }
 
+func (algo *AES128) Description() string {
+	return "AES symmetric encryption (128-bit)"
+}
+
 func (algo *AES128) Seal(input io.Reader, output io.Writer, psw string) error {
 	// read source file
 	plainData, err := io.ReadAll(input)
