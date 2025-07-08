@@ -1,10 +1,10 @@
 # Cloak
 
 ![Go Version](https://img.shields.io/github/go-mod/go-version/astrorick/cloak)
-[![Go Report Card](https://goreportcard.com/badge/github.com/astrorick/cloak)](https://goreportcard.com/report/github.com/astrorick/cloak)
 [![Go Reference](https://pkg.go.dev/badge/github.com/astrorick/cloak.svg)](https://pkg.go.dev/github.com/astrorick/cloak)
-[![Latest Release](https://img.shields.io/github/v/release/astrorick/cloak?label=release)](https://github.com/astrorick/cloak/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/astrorick/cloak)](https://goreportcard.com/report/github.com/astrorick/cloak)
 ![License](https://img.shields.io/github/license/astrorick/cloak)
+[![Latest Release](https://img.shields.io/github/v/release/astrorick/cloak?label=release)](https://github.com/astrorick/cloak/releases)
 
 _Cloak_ is a minimal CLI tool for encrypting and decrypting files.
 
