@@ -21,8 +21,8 @@ import (
 type CryptoAlgorithm interface {
 	Name() string
 	Description() string
-	Seal(input io.Reader, output io.Writer, psw string) error
-	Unseal(input io.Reader, output io.Writer, psw string) error
+	Encrypt(input io.Reader, output io.Writer, psw string) error
+	Decrypt(input io.Reader, output io.Writer, psw string) error
 }
 
 var implementedAlgorithms = map[string]CryptoAlgorithm{
@@ -139,7 +139,7 @@ func main() {
 			defer out.Close()
 
 			// encrypt
-			if err := algo.Seal(in, out, requestUserPassword()); err != nil {
+			if err := algo.Encrypt(in, out, requestUserPassword()); err != nil {
 				_ = os.Remove(outputFilePath)
 				log.Fatal(err)
 			}
@@ -208,7 +208,7 @@ func main() {
 			defer out.Close()
 
 			// decrypt
-			if err := algo.Unseal(in, out, requestUserPassword()); err != nil {
+			if err := algo.Decrypt(in, out, requestUserPassword()); err != nil {
 				_ = os.Remove(outputFilePath)
 				log.Fatal(err)
 			}

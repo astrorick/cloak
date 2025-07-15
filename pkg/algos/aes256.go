@@ -44,7 +44,7 @@ func (algo *AES256) Description() string {
 	return "AES symmetric encryption (256-bit)"
 }
 
-func (algo *AES256) Seal(input io.Reader, output io.Writer, psw string) error {
+func (algo *AES256) Encrypt(input io.Reader, output io.Writer, psw string) error {
 	// read source file
 	plainData, err := io.ReadAll(input)
 	if err != nil {
@@ -98,7 +98,7 @@ func (algo *AES256) Seal(input io.Reader, output io.Writer, psw string) error {
 	return nil
 }
 
-func (algo *AES256) Unseal(input io.Reader, output io.Writer, psw string) error {
+func (algo *AES256) Decrypt(input io.Reader, output io.Writer, psw string) error {
 	// read salt from input file
 	salt := make([]byte, algo.saltSize)
 	if _, err := io.ReadFull(input, salt); err != nil {
