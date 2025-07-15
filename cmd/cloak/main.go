@@ -18,6 +18,8 @@ import (
 	"golang.org/x/term"
 )
 
+//* Cloak Logic */
+
 type CryptoAlgorithm interface {
 	Name() string
 	Description() string
@@ -27,9 +29,9 @@ type CryptoAlgorithm interface {
 
 var implementedAlgorithms = map[string]CryptoAlgorithm{
 	//* Advanced Encryption Standard (AES) Family */
-	"aes128": algos.NewAES128(),
-	"aes192": algos.NewAES192(),
-	"aes256": algos.NewAES256(),
+	"aes128": algos.NewAESGCM128(),
+	"aes192": algos.NewAESGCM192(),
+	"aes256": algos.NewAESGCM256(),
 
 	//* Blowfish Family */
 	// TODO "blowfish": algos.NewBlowfish(),
@@ -43,7 +45,7 @@ var implementedAlgorithms = map[string]CryptoAlgorithm{
 }
 var defaultAlgorithm = implementedAlgorithms["aes256"]
 
-//* Cloak Logic */
+//* CLI Logic */
 
 func main() {
 	//* Program Version */
