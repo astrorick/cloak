@@ -34,7 +34,6 @@ type CryptoAlgorithm interface {
 	Unseal(input io.Reader, output io.Writer, psw string) error
 }
 
-var defaultAlgorithmName = "aes256" // change this to change default algorithm
 var implementedAlgorithms = map[string]CryptoAlgorithm{
 	//* Advanced Encryption Standard (AES) Family */
 	"aes128": algos.NewAES128(),
@@ -51,6 +50,7 @@ var implementedAlgorithms = map[string]CryptoAlgorithm{
 	//* Ascon Family */
 	// TODO: "ascon": algos.NewAscon(),
 }
+var defaultAlgorithm = implementedAlgorithms["aes256"]
 
 // Encrypt encodes the input file with the specified algorithm and writes the result to the output file.
 func (clk *Cloak) Encrypt(psw string) error {
@@ -133,7 +133,7 @@ func main() {
 		Run: func(cmd *cobra.Command, args []string) {
 			// display program version and exit if version flag is present
 			if displayVersion {
-				fmt.Printf("Cloak v%s by Astrorick\n", appVersion.String())
+				fmt.Printf("Cloak v%s by Astrorick.\n", appVersion.String())
 				os.Exit(0)
 			}
 
@@ -155,7 +155,7 @@ func main() {
 			// check for correct number of arguments
 			if len(args) != 2 {
 				_ = cmd.Help()
-				return
+				os.Exit(1)
 			}
 
 			// read input and output file paths from arguments
@@ -215,7 +215,7 @@ func main() {
 			// check for correct number of arguments
 			if len(args) != 2 {
 				_ = cmd.Help()
-				return
+				os.Exit(1)
 			}
 
 			// read input and output file paths from arguments
@@ -278,8 +278,8 @@ func main() {
 			for _, algoName := range getAlgorithmNames() {
 				algo := implementedAlgorithms[algoName]
 				defaultMarker := ""
-				if algoName == defaultAlgorithmName {
-					defaultMarker = " (*default)"
+				if algoName == defaultAlgorithm.Name() {
+					defaultMarker = " (default)"
 				}
 
 				fmt.Printf(" - %s: %s%s\n", algoName, algo.Description(), defaultMarker)
@@ -292,15 +292,15 @@ func main() {
 		Long:  "Display the current version of this program",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("Cloak v%s by Astrorick\n", appVersion.String())
+			fmt.Printf("Cloak v%s by Astrorick.\n", appVersion.String())
 		},
 	}
 
 	//* Register Flags and Commands */
 	rootCommand.Flags().BoolVarP(&displayVersion, "version", "v", false, "program version")
-	encryptCommand.Flags().StringVarP(&encryptionAlgorithmName, "algorithm", "x", defaultAlgorithmName, fmt.Sprintf("encryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
+	encryptCommand.Flags().StringVarP(&encryptionAlgorithmName, "algorithm", "x", defaultAlgorithm.Name(), fmt.Sprintf("encryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
 	encryptCommand.Flags().BoolVarP(&encryptionReplace, "replace", "r", false, "remove source file after encryption")
-	decryptCommand.Flags().StringVarP(&decryptionAlgorithmName, "algorithm", "x", defaultAlgorithmName, fmt.Sprintf("decryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
+	decryptCommand.Flags().StringVarP(&decryptionAlgorithmName, "algorithm", "x", defaultAlgorithm.Name(), fmt.Sprintf("decryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
 	decryptCommand.Flags().BoolVarP(&decryptionReplace, "replace", "r", false, "remove source file after decryption")
 	rootCommand.AddCommand(encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
 
@@ -312,6 +312,19 @@ func main() {
 
 //* Auxiliary Functions */
 
+// getAlgorithmNames returns a strings slice with the names of implemented algorithms
+func getAlgorithmNames() []string {
+	algoNames := make([]string, 0, len(implementedAlgorithms))
+	for algoName := range implementedAlgorithms {
+		algoNames = append(algoNames, algoName)
+	}
+
+	slices.Sort(algoNames)
+
+	return algoNames
+}
+
+// fileExists returns (true, nil) if the file specified by filePath exists, (false, nil) if it doesn't, or (false, err) if there were problems accessing the file.
 func fileExists(filePath string) (bool, error) {
 	_, err := os.Stat(filePath)
 
@@ -326,6 +339,7 @@ func fileExists(filePath string) (bool, error) {
 	return false, err
 }
 
+// confirmOverwrite asks the user if they want to overwrite the file specified by filePath until they provide an acceptable answer. It returns true if the file should be overwritten, and false otherwise.
 func confirmOverwrite(filePath string) bool {
 	positiveAnswers := []string{"y", "yes", ""}
 	negativeAnswers := []string{"n", "no"}
@@ -353,17 +367,7 @@ func confirmOverwrite(filePath string) bool {
 	}
 }
 
-func getAlgorithmNames() []string {
-	algoNames := make([]string, 0, len(implementedAlgorithms))
-	for algoName := range implementedAlgorithms {
-		algoNames = append(algoNames, algoName)
-	}
-
-	slices.Sort(algoNames)
-
-	return algoNames
-}
-
+// requestUserPassword allows the user to input a password while following security guidelines (minimum length, allowed characters, etc.).
 func requestUserPassword() string {
 	// define set of allowed characters in passwords
 	allowedCharacters := regexp.MustCompile(`^[\x21-\x7E]+$`)
@@ -371,7 +375,7 @@ func requestUserPassword() string {
 	for {
 		// ask for password
 		fmt.Print("Enter password: ")
-		bytePassword, _ := term.ReadPassword(int(syscall.Stdin)) // using term for masked input
+		bytePassword, _ := term.ReadPassword(int(syscall.Stdin)) // using term package for masked input
 		fmt.Println()
 		providedPassword := string(bytePassword)
 
@@ -393,7 +397,7 @@ func requestUserPassword() string {
 		fmt.Println()
 		confirmPassword := string(byteConfirm)
 
-		// check passwords match
+		// check if passwords match
 		if providedPassword == confirmPassword {
 			return providedPassword
 		}
