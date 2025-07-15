@@ -69,13 +69,13 @@ func (algo *AES128) Seal(input io.Reader, output io.Writer, psw string) error {
 		return fmt.Errorf("error generating random nonce: %w", err)
 	}
 
-	// create AES cipher with key
+	// create AES cipher block with key
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return fmt.Errorf("error creating AES cipher block: %w", err)
 	}
 
-	// wrap cipher in GCM
+	// wrap cipher block in GCM
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return fmt.Errorf("error wrapping cipher block in GCM: %w", err)
@@ -123,13 +123,13 @@ func (algo *AES128) Unseal(input io.Reader, output io.Writer, psw string) error 
 		return fmt.Errorf("error reading input file: %w", err)
 	}
 
-	// create AES cipher with key
+	// create AES cipher block with key
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return fmt.Errorf("error creating AES cipher block: %w", err)
 	}
 
-	// wrap cipher in GCM
+	// wrap cipher block in GCM
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return fmt.Errorf("error wrapping cipher block in GCM: %w", err)

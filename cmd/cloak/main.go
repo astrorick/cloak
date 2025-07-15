@@ -18,15 +18,6 @@ import (
 	"golang.org/x/term"
 )
 
-//* Cloak Logic */
-
-type Cloak struct {
-	inputFilePath  string // path to input file
-	outputFilePath string // path to output file
-
-	cryptoAlgorithm CryptoAlgorithm // interface representation of the crypto algorithm to use
-}
-
 type CryptoAlgorithm interface {
 	Name() string
 	Description() string
@@ -52,70 +43,15 @@ var implementedAlgorithms = map[string]CryptoAlgorithm{
 }
 var defaultAlgorithm = implementedAlgorithms["aes256"]
 
-// Encrypt encodes the input file with the specified algorithm and writes the result to the output file.
-func (clk *Cloak) Encrypt(psw string) error {
-	fmt.Printf("Encrypting \"%s\" to \"%s\" using %s.\n", clk.inputFilePath, clk.outputFilePath, clk.cryptoAlgorithm.Name())
-
-	// open input file
-	in, err := os.Open(clk.inputFilePath)
-	if err != nil {
-		return fmt.Errorf("error opening input file: %w", err)
-	}
-	defer in.Close()
-
-	// open output file
-	out, err := os.Create(clk.outputFilePath)
-	if err != nil {
-		return fmt.Errorf("error creating output file: %w", err)
-	}
-	defer out.Close()
-
-	// encrypt file
-	if err := clk.cryptoAlgorithm.Seal(in, out, psw); err != nil {
-		return fmt.Errorf("error encrypting file: %w", err)
-	}
-
-	return nil
-}
-
-// Decrypt decodes the input file with the specified algorithm and writes the result to the output file.
-func (clk *Cloak) Decrypt(psw string) error {
-	fmt.Printf("Decrypting \"%s\" to \"%s\" using %s.\n", clk.inputFilePath, clk.outputFilePath, clk.cryptoAlgorithm.Name())
-
-	// open input file
-	in, err := os.Open(clk.inputFilePath)
-	if err != nil {
-		return fmt.Errorf("error opening input file: %w", err)
-	}
-	defer in.Close()
-
-	// open output file
-	out, err := os.Create(clk.outputFilePath)
-	if err != nil {
-		return fmt.Errorf("error creating output file: %w", err)
-	}
-	defer out.Close()
-
-	// decrypt file
-	if err := clk.cryptoAlgorithm.Unseal(in, out, psw); err != nil {
-		return fmt.Errorf("error decrypting file: %w", err)
-	}
-
-	return nil
-}
-
-//* CLI Logic */
+//* Cloak Logic */
 
 func main() {
 	//* Program Version */
 	appVersion := &semantika.Version{
 		Major: 0,
-		Minor: 2,
-		Patch: 1,
+		Minor: 3,
+		Patch: 0,
 	}
-
-	//* Default Program Config */
-	clk := &Cloak{}
 
 	//* Command Line Args and Flags Parsing */
 	var (
@@ -159,49 +95,58 @@ func main() {
 			}
 
 			// read input and output file paths from arguments
-			encryptionInputFilePath := args[0]
-			encryptionOutputFilePath := args[1]
+			inputFilePath := args[0]
+			outputFilePath := args[1]
 
-			// check if input file exists
-			inputExists, err := fileExists(encryptionInputFilePath)
+			// check that input file exists
+			inputFileExists, err := fileExists(inputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
-			if !inputExists {
-				log.Fatalf("Input file \"%s\" does not exist.\n", encryptionInputFilePath)
+			if !inputFileExists {
+				log.Fatalf("Input file \"%s\" does not exist.\n", inputFilePath)
 			}
 
 			// check that output file does not already exist
-			outputExists, err := fileExists(encryptionOutputFilePath)
+			outputFileExists, err := fileExists(outputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
-			if outputExists && !confirmOverwrite(encryptionOutputFilePath) {
+			if outputFileExists && !confirmOverwrite(outputFilePath) {
 				fmt.Println("Operation cancelled by user.")
 				os.Exit(0)
 			}
 
 			// check crypto algorithm
-			encryptionAlgorithm, ok := implementedAlgorithms[encryptionAlgorithmName]
+			algo, ok := implementedAlgorithms[encryptionAlgorithmName]
 			if !ok {
 				fmt.Printf("Unsupported encryption algorithm \"%s\". Implemented algorithms: (%s).", encryptionAlgorithmName, strings.Join(getAlgorithmNames(), ", "))
 				os.Exit(1)
 			}
 
-			// generate config from args and flags
-			clk.inputFilePath = encryptionInputFilePath
-			clk.outputFilePath = encryptionOutputFilePath
-			clk.cryptoAlgorithm = encryptionAlgorithm
+			// open input file
+			in, err := os.Open(inputFilePath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer in.Close()
 
-			// ask user for password and encrypt
-			if err := clk.Encrypt(requestUserPassword()); err != nil {
-				_ = os.Remove(clk.outputFilePath)
+			// open output file
+			out, err := os.Create(outputFilePath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer out.Close()
+
+			// encrypt
+			if err := algo.Seal(in, out, requestUserPassword()); err != nil {
+				_ = os.Remove(outputFilePath)
 				log.Fatal(err)
 			}
 
 			// remove original file if flag was set
 			if encryptionReplace {
-				if err := os.Remove(clk.inputFilePath); err != nil {
+				if err := os.Remove(inputFilePath); err != nil {
 					log.Fatal(err)
 				}
 			}
@@ -219,49 +164,58 @@ func main() {
 			}
 
 			// read input and output file paths from arguments
-			decryptionInputFilePath := args[0]
-			decryptionOutputFilePath := args[1]
+			inputFilePath := args[0]
+			outputFilePath := args[1]
 
-			// check if input file exists
-			inputExists, err := fileExists(decryptionInputFilePath)
+			// check that input file exists
+			inputFileExists, err := fileExists(inputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
-			if !inputExists {
-				log.Fatalf("Input file \"%s\" does not exist.\n", decryptionInputFilePath)
+			if !inputFileExists {
+				log.Fatalf("Input file \"%s\" does not exist.\n", inputFilePath)
 			}
 
 			// check that output file does not already exist
-			outputExists, err := fileExists(decryptionOutputFilePath)
+			outputFileExists, err := fileExists(outputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
-			if outputExists && !confirmOverwrite(decryptionOutputFilePath) {
+			if outputFileExists && !confirmOverwrite(outputFilePath) {
 				fmt.Println("Operation cancelled by user.")
 				os.Exit(0)
 			}
 
 			// check crypto algorithm
-			decryptionAlgorithm, ok := implementedAlgorithms[decryptionAlgorithmName]
+			algo, ok := implementedAlgorithms[decryptionAlgorithmName]
 			if !ok {
 				fmt.Printf("Unsupported decryption algorithm \"%s\". Implemented algorithms: (%s).", decryptionAlgorithmName, strings.Join(getAlgorithmNames(), ", "))
 				os.Exit(1)
 			}
 
-			// generate config from args and flags
-			clk.inputFilePath = decryptionInputFilePath
-			clk.outputFilePath = decryptionOutputFilePath
-			clk.cryptoAlgorithm = decryptionAlgorithm
+			// open input file
+			in, err := os.Open(inputFilePath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer in.Close()
 
-			// ask user for password and decrypt
-			if err := clk.Decrypt(requestUserPassword()); err != nil {
-				_ = os.Remove(clk.outputFilePath)
+			// open output file
+			out, err := os.Create(outputFilePath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer out.Close()
+
+			// decrypt
+			if err := algo.Unseal(in, out, requestUserPassword()); err != nil {
+				_ = os.Remove(outputFilePath)
 				log.Fatal(err)
 			}
 
 			// remove original file if flag was set
 			if decryptionReplace {
-				if err := os.Remove(clk.inputFilePath); err != nil {
+				if err := os.Remove(inputFilePath); err != nil {
 					log.Fatal(err)
 				}
 			}
