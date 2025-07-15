@@ -59,11 +59,13 @@ func main() {
 	var (
 		displayVersion bool // whether to display program version
 
-		encryptionAlgorithmName string // name of algorithm used for encryption
-		encryptionReplace       bool   // whether to remove the source file after encryption
+		encryptionAlgorithmName  string // name of algorithm used for encryption
+		encryptionForceOverwrite bool   // whether to automatically overwrite output file
+		encryptionReplace        bool   // whether to remove the source file after encryption
 
-		decryptionAlgorithmName string // name of algorithm used for decryption
-		decryptionReplace       bool   // whether to remove the source file after decryption
+		decryptionAlgorithmName  string // name of algorithm used for decryption
+		decryptionForceOverwrite bool   // whether to automatically overwrite output file
+		decryptionReplace        bool   // whether to remove the source file after decryption
 	)
 	rootCommand := &cobra.Command{
 		Use:   "cloak",
@@ -114,7 +116,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			if outputFileExists && !confirmOverwrite(outputFilePath) {
+			if outputFileExists && !encryptionForceOverwrite && !confirmOverwrite(outputFilePath) {
 				fmt.Println("Operation cancelled by user.")
 				os.Exit(0)
 			}
@@ -183,7 +185,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			if outputFileExists && !confirmOverwrite(outputFilePath) {
+			if outputFileExists && !decryptionForceOverwrite && !confirmOverwrite(outputFilePath) {
 				fmt.Println("Operation cancelled by user.")
 				os.Exit(0)
 			}
@@ -255,8 +257,10 @@ func main() {
 	//* Register Flags and Commands */
 	rootCommand.Flags().BoolVarP(&displayVersion, "version", "v", false, "program version")
 	encryptCommand.Flags().StringVarP(&encryptionAlgorithmName, "algorithm", "x", defaultAlgorithm.Name(), fmt.Sprintf("encryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
+	encryptCommand.Flags().BoolVarP(&encryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
 	encryptCommand.Flags().BoolVarP(&encryptionReplace, "replace", "r", false, "remove source file after encryption")
 	decryptCommand.Flags().StringVarP(&decryptionAlgorithmName, "algorithm", "x", defaultAlgorithm.Name(), fmt.Sprintf("decryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
+	decryptCommand.Flags().BoolVarP(&decryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
 	decryptCommand.Flags().BoolVarP(&decryptionReplace, "replace", "r", false, "remove source file after decryption")
 	rootCommand.AddCommand(encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
 

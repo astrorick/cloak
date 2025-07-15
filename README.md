@@ -22,6 +22,7 @@ Here's a list of planned features I'm currently working on:
 
 - [ ] Implement additional cryptography algorithms
 - [ ] Implement successful decryption check
+- [ ] Abstract encryption and decryption common logic in source code
 
 ## Quick Start
 
@@ -61,6 +62,7 @@ cloak [command] [flags]
   **Available Flags:**
   - `-h` or `--help`: display the encryption help message
   - `-x` or `--algorithm`: specify the encryption algorithm (`aes128`, `aes192`, `aes256` or `chacha20poly1305`)
+  - `-f` of `--force`: forcefully overwrite the output file without asking
   - `-r` or `--replace`: remove input file after encryption
 
 - `dec`: decrypt the input file into the output file using the optionally specified algorithm (defaults to `aes256`)
@@ -72,7 +74,10 @@ cloak [command] [flags]
   **Available Flags:**
   - `-h` or `--help`: display the decryption help message
   - `-x` or `--algorithm`: specify the decryption algorithm (`aes128`, `aes192`, `aes256` or `chacha20poly1305`)
+  - `-f` of `--force`: forcefully overwrite the output file without asking
   - `-r` or `--replace`: remove input file after encryption
+
+- `algos`: print a list of currently implemented algorithms
 
 - `version`: print current program version (equivalent to the `-v` and `--version` flags)
 
