@@ -20,9 +20,10 @@ Here's a list of currently available features:
 
 Here's a list of planned features I'm currently working on:
 
-- [ ] Implement additional cryptography algorithms
-- [ ] Implement successful decryption check
-- [ ] Abstract encryption and decryption common logic in source code
+- [ ] Implement the Ascon cryptography algorithm
+- [ ] Abstract encryption and decryption common command logic in source code
+- [ ] Add a skip password confirmation flag (for script usage)
+- [ ] Add flag to directly inject password (for script usage)
 
 ## Quick Start
 

@@ -12,22 +12,22 @@ import (
 )
 
 type AEAD struct {
-	Name        string
-	Description string
+	NameStr string
+	DescStr string
 
 	SaltSize  int
 	NonceSize int
 
-	Keygen  keygen.Keygen
-	Factory func(key []byte) (cipher.AEAD, error)
+	Keygen    keygen.Keygen
+	NewCipher func(key []byte) (cipher.AEAD, error)
 }
 
 //* AES Family with GCM Authentication */
 
 func newAESGCM(keySizeBytes uint8) *AEAD {
 	return &AEAD{
-		Name:        fmt.Sprintf("aesgcm%d", keySizeBytes),
-		Description: fmt.Sprintf("symmetric AES encryption with GCM authentication (%d-bit)", keySizeBytes*8),
+		NameStr: fmt.Sprintf("aesgcm%d", keySizeBytes*8),
+		DescStr: fmt.Sprintf("symmetric AES encryption/decryption with GCM authentication (%d-bit)", keySizeBytes*8),
 
 		SaltSize:  16,
 		NonceSize: 12,
@@ -38,13 +38,18 @@ func newAESGCM(keySizeBytes uint8) *AEAD {
 			Threads: 4,
 			KeySize: uint32(keySizeBytes),
 		},
-		Factory: func(key []byte) (cipher.AEAD, error) {
+		NewCipher: func(key []byte) (cipher.AEAD, error) {
 			block, err := aes.NewCipher(key)
 			if err != nil {
 				return nil, err
 			}
 
-			return cipher.NewGCM(block)
+			aeadCipher, err := cipher.NewGCM(block)
+			if err != nil {
+				return nil, err
+			}
+
+			return aeadCipher, nil
 		},
 	}
 }
@@ -65,8 +70,8 @@ func NewAESGCM256() *AEAD {
 
 func NewChaCha20Poly1305() *AEAD {
 	return &AEAD{
-		Name:        "chacha20poly1305",
-		Description: "symmetric ChaCha20 encryption with Poly1305 authentication",
+		NameStr: "chacha20poly1305",
+		DescStr: "symmetric ChaCha20 encryption/decryption with Poly1305 authentication ",
 
 		SaltSize:  16,
 		NonceSize: 12,
@@ -77,13 +82,13 @@ func NewChaCha20Poly1305() *AEAD {
 			Threads: 4,
 			KeySize: 32,
 		},
-		Factory: func(key []byte) (cipher.AEAD, error) {
-			aead, err := chacha20poly1305.New(key)
+		NewCipher: func(key []byte) (cipher.AEAD, error) {
+			aeadCipher, err := chacha20poly1305.New(key)
 			if err != nil {
 				return nil, err
 			}
 
-			return aead, nil
+			return aeadCipher, nil
 		},
 	}
 }
@@ -91,11 +96,11 @@ func NewChaCha20Poly1305() *AEAD {
 //* Generic Encryption and Decryption Methods */
 
 func (aead *AEAD) Name() string {
-	return aead.Name
+	return aead.NameStr
 }
 
 func (aead *AEAD) Description() string {
-	return aead.Description
+	return aead.DescStr
 }
 
 func (aead *AEAD) Encrypt(input io.Reader, output io.Writer, psw string) error {
@@ -117,20 +122,20 @@ func (aead *AEAD) Encrypt(input io.Reader, output io.Writer, psw string) error {
 		return fmt.Errorf("error generating random nonce: %w", err)
 	}
 
-	// get cipher
-	cipherAEAD, err := aead.Factory(key)
+	// get cipher from key
+	aeadCipher, err := aead.NewCipher(key)
 	if err != nil {
-		return fmt.Errorf("error getting aead: %w", err)
+		return fmt.Errorf("error creating cipher: %w", err)
 	}
 
-	// read source file
-	plainData, err := io.ReadAll(input)
+	// read entire source file
+	plainBytes, err := io.ReadAll(input)
 	if err != nil {
 		return fmt.Errorf("error reading input file: %w", err)
 	}
 
 	// encrypt data
-	cipherData := cipherAEAD.Seal(nil, nonce, plainData, nil)
+	cipherBytes := aeadCipher.Seal(nil, nonce, plainBytes, nil)
 
 	// write salt + nonce + ciphertext to output file
 	if _, err := output.Write(salt); err != nil {
@@ -139,7 +144,7 @@ func (aead *AEAD) Encrypt(input io.Reader, output io.Writer, psw string) error {
 	if _, err := output.Write(nonce); err != nil {
 		return fmt.Errorf("error writing nonce to output file: %w", err)
 	}
-	if _, err := output.Write(cipherData); err != nil {
+	if _, err := output.Write(cipherBytes); err != nil {
 		return fmt.Errorf("error writing ciphertext to output file: %w", err)
 	}
 
@@ -147,40 +152,44 @@ func (aead *AEAD) Encrypt(input io.Reader, output io.Writer, psw string) error {
 }
 
 func (aead *AEAD) Decrypt(input io.Reader, output io.Writer, psw string) error {
-	// read header (salt + nonce) from input file
-	header := make([]byte, aead.SaltSize+aead.NonceSize)
-	if _, err := io.ReadFull(input, header); err != nil {
-		return fmt.Errorf("error reading header from input file: %w", err)
+	// read salt from input file
+	salt := make([]byte, aead.SaltSize)
+	if _, err := io.ReadFull(input, salt); err != nil {
+		return fmt.Errorf("error reading salt from input file: %w", err)
 	}
-	salt := header[:aead.SaltSize]
-	nonce := header[aead.SaltSize:]
 
-	// derive encryption key from psw and salt
+	// derive decryption key from psw and salt
 	key, err := aead.Keygen.DeriveKey(psw, salt)
 	if err != nil {
 		return fmt.Errorf("error generating decryption key: %w", err)
 	}
 
-	// get cipher
-	cipherAEAD, err := aead.Factory(key)
-	if err != nil {
-		return fmt.Errorf("error getting aead: %w", err)
+	// read nonce from input file
+	nonce := make([]byte, aead.NonceSize)
+	if _, err := io.ReadFull(input, nonce); err != nil {
+		return fmt.Errorf("error reading nonce from input file: %w", err)
 	}
 
-	// read the remaining input file (cipher data)
-	cipherData, err := io.ReadAll(input)
+	// get cipher from key
+	aeadCipher, err := aead.NewCipher(key)
+	if err != nil {
+		return fmt.Errorf("error creating cipher: %w", err)
+	}
+
+	// read the remaining input file (cipher bytes)
+	cipherBytes, err := io.ReadAll(input)
 	if err != nil {
 		return fmt.Errorf("error reading input file: %w", err)
 	}
 
 	// decrypt data
-	plainData, err := cipherAEAD.Open(nil, nonce, cipherData, nil)
+	plainBytes, err := aeadCipher.Open(nil, nonce, cipherBytes, nil)
 	if err != nil {
 		return fmt.Errorf("decryption failed or data corrupted: %w", err)
 	}
 
 	// write decrypted data to output file
-	if _, err := output.Write(plainData); err != nil {
+	if _, err := output.Write(plainBytes); err != nil {
 		return fmt.Errorf("error writing decrypted data to output file: %w", err)
 	}
 

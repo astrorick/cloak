@@ -29,21 +29,17 @@ type CryptoAlgorithm interface {
 
 var implementedAlgorithms = map[string]CryptoAlgorithm{
 	//* Advanced Encryption Standard (AES) Family */
-	"aes128": algos.NewAESGCM128(),
-	"aes192": algos.NewAESGCM192(),
-	"aes256": algos.NewAESGCM256(),
-
-	//* Blowfish Family */
-	// TODO "blowfish": algos.NewBlowfish(),
+	"aesgcm128": algos.NewAESGCM128(),
+	"aesgcm192": algos.NewAESGCM192(),
+	"aesgcm256": algos.NewAESGCM256(),
 
 	//* ChaCha20 Family */
-	// TODO "chacha20": algos.NewChaCha20(),
 	"chacha20poly1305": algos.NewChaCha20Poly1305(),
 
 	//* Ascon Family */
 	// TODO: "ascon": algos.NewAscon(),
 }
-var defaultAlgorithm = implementedAlgorithms["aes256"]
+var defaultAlgorithm = implementedAlgorithms["aesgcm256"]
 
 //* CLI Logic */
 
