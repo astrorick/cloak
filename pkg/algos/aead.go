@@ -24,10 +24,10 @@ type AEAD struct {
 
 //* AES Family with GCM Authentication */
 
-func newAESGCM(keySizeBytes uint8) *AEAD {
+func newAESGCM(keySizeBytes int) *AEAD {
 	return &AEAD{
 		NameStr: fmt.Sprintf("aesgcm%d", keySizeBytes*8),
-		DescStr: fmt.Sprintf("symmetric AES encryption/decryption with GCM authentication (%d-bit)", keySizeBytes*8),
+		DescStr: fmt.Sprintf("symmetric AES with GCM authentication (%d-bit)", keySizeBytes*8),
 
 		SaltSize:  16,
 		NonceSize: 12,
@@ -71,7 +71,7 @@ func NewAESGCM256() *AEAD {
 func NewChaCha20Poly1305() *AEAD {
 	return &AEAD{
 		NameStr: "chacha20poly1305",
-		DescStr: "symmetric ChaCha20 encryption/decryption with Poly1305 authentication ",
+		DescStr: "symmetric ChaCha20 with Poly1305 authentication ",
 
 		SaltSize:  16,
 		NonceSize: 12,
