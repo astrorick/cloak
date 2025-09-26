@@ -1,21 +1,17 @@
 package main
 
 import (
-	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"regexp"
 	"slices"
 	"strings"
-	"syscall"
 
 	"github.com/astrorick/cloak/pkg/algos"
+	"github.com/astrorick/cloak/pkg/utils"
 	"github.com/astrorick/semantika"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 )
 
 //* Cloak Logic */
@@ -35,9 +31,6 @@ var implementedAlgorithms = map[string]CryptoAlgorithm{
 
 	//* ChaCha20 Family */
 	"chacha20poly1305": algos.NewChaCha20Poly1305(),
-
-	//* Ascon Family */
-	// TODO: "ascon": algos.NewAscon(),
 }
 var defaultAlgorithm = implementedAlgorithms["aesgcm256"]
 
@@ -47,7 +40,7 @@ func main() {
 	//* Program Version */
 	appVersion := &semantika.Version{
 		Major: 0,
-		Minor: 3,
+		Minor: 4,
 		Patch: 0,
 	}
 
@@ -99,7 +92,7 @@ func main() {
 			outputFilePath := args[1]
 
 			// check that input file exists
-			inputFileExists, err := fileExists(inputFilePath)
+			inputFileExists, err := utils.FileExists(inputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -108,11 +101,11 @@ func main() {
 			}
 
 			// check that output file does not already exist
-			outputFileExists, err := fileExists(outputFilePath)
+			outputFileExists, err := utils.FileExists(outputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
-			if outputFileExists && !encryptionForceOverwrite && !confirmOverwrite(outputFilePath) {
+			if outputFileExists && !encryptionForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
 				fmt.Println("Operation cancelled by user.")
 				os.Exit(0)
 			}
@@ -139,7 +132,7 @@ func main() {
 			defer out.Close()
 
 			// encrypt
-			if err := algo.Encrypt(in, out, requestUserPassword()); err != nil {
+			if err := algo.Encrypt(in, out, utils.RequestUserPassword()); err != nil {
 				_ = os.Remove(outputFilePath)
 				log.Fatal(err)
 			}
@@ -168,7 +161,7 @@ func main() {
 			outputFilePath := args[1]
 
 			// check that input file exists
-			inputFileExists, err := fileExists(inputFilePath)
+			inputFileExists, err := utils.FileExists(inputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -177,11 +170,11 @@ func main() {
 			}
 
 			// check that output file does not already exist
-			outputFileExists, err := fileExists(outputFilePath)
+			outputFileExists, err := utils.FileExists(outputFilePath)
 			if err != nil {
 				log.Fatal(err)
 			}
-			if outputFileExists && !decryptionForceOverwrite && !confirmOverwrite(outputFilePath) {
+			if outputFileExists && !decryptionForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
 				fmt.Println("Operation cancelled by user.")
 				os.Exit(0)
 			}
@@ -208,7 +201,7 @@ func main() {
 			defer out.Close()
 
 			// decrypt
-			if err := algo.Decrypt(in, out, requestUserPassword()); err != nil {
+			if err := algo.Decrypt(in, out, utils.RequestUserPassword()); err != nil {
 				_ = os.Remove(outputFilePath)
 				log.Fatal(err)
 			}
@@ -278,86 +271,4 @@ func getAlgorithmNames() []string {
 	slices.Sort(algoNames)
 
 	return algoNames
-}
-
-// fileExists returns (true, nil) if the file specified by filePath exists, (false, nil) if it doesn't, or (false, err) if there were problems accessing the file.
-func fileExists(filePath string) (bool, error) {
-	_, err := os.Stat(filePath)
-
-	if err == nil {
-		return true, nil
-	}
-
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-
-	return false, err
-}
-
-// confirmOverwrite asks the user if they want to overwrite the file specified by filePath until they provide an acceptable answer. It returns true if the file should be overwritten, and false otherwise.
-func confirmOverwrite(filePath string) bool {
-	positiveAnswers := []string{"y", "yes", ""}
-	negativeAnswers := []string{"n", "no"}
-	reader := bufio.NewReader(os.Stdin)
-
-	fmt.Printf("Output file \"%s\" already exists. Overwrite? (Y/n): ", filePath)
-
-	// keep asking the user until they provides an acceptable answer
-	for {
-		userInput, _ := reader.ReadString('\n')
-		userAnswer := strings.ToLower(strings.TrimSpace(userInput))
-
-		// check if answer is negative
-		if slices.Contains(negativeAnswers, userAnswer) {
-			return false
-		}
-
-		// check if answer is positive
-		if slices.Contains(positiveAnswers, userAnswer) {
-			return true
-		}
-
-		// repeat question
-		fmt.Print("Invalid answer. Overwrite? (Y/n): ")
-	}
-}
-
-// requestUserPassword allows the user to input a password while following security guidelines (minimum length, allowed characters, etc.).
-func requestUserPassword() string {
-	// define set of allowed characters in passwords
-	allowedCharacters := regexp.MustCompile(`^[\x21-\x7E]+$`)
-
-	for {
-		// ask for password
-		fmt.Print("Enter password: ")
-		bytePassword, _ := term.ReadPassword(int(syscall.Stdin)) // using term package for masked input
-		fmt.Println()
-		providedPassword := string(bytePassword)
-
-		// check password length
-		if len(providedPassword) < 8 {
-			fmt.Println("Password too short. Minimum 8 characters.")
-			continue
-		}
-
-		// check password content
-		if !allowedCharacters.MatchString(providedPassword) {
-			fmt.Println("Password contains invalid characters. Use only A-Z, a-z, 0-9, and standard special characters (no spaces).")
-			continue
-		}
-
-		// confirm password
-		fmt.Print("Confirm password: ")
-		byteConfirm, _ := term.ReadPassword(int(syscall.Stdin)) // using term for masked input
-		fmt.Println()
-		confirmPassword := string(byteConfirm)
-
-		// check if passwords match
-		if providedPassword == confirmPassword {
-			return providedPassword
-		}
-
-		fmt.Println("Passwords do not match. Try again.")
-	}
 }
