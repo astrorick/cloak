@@ -27,14 +27,14 @@ func main() {
 		displayVersion bool // whether to display program version
 
 		//* Encrypt Command Args and Flags */
-		encryptionAlgorithmName  string // name of algorithm used for encryption
-		encryptionForceOverwrite bool   // whether to automatically overwrite output file
-		encryptionReplace        bool   // whether to remove the source file after encryption
+		encryptionAlgorithmName   string // name of algorithm used for encryption
+		encryptionForceOverwrite  bool   // whether to automatically overwrite output file
+		encryptionReplaceOriginal bool   // whether to remove the source file after encryption
 
 		//* Decrypt Command Args and Flags */
-		decryptionAlgorithmName  string // name of algorithm used for decryption
-		decryptionForceOverwrite bool   // whether to automatically overwrite output file
-		decryptionReplace        bool   // whether to remove the source file after decryption
+		decryptionAlgorithmName   string // name of algorithm used for decryption
+		decryptionForceOverwrite  bool   // whether to automatically overwrite output file
+		decryptionReplaceOriginal bool   // whether to remove the source file after decryption
 	)
 
 	//* Root Command */
@@ -72,67 +72,23 @@ func main() {
 				os.Exit(1)
 			}
 
-			// read input and output file paths from arguments
-			inputFilePath := args[0]
-			outputFilePath := args[1]
-
-			// check that input file exists
-			inputFileExists, err := utils.FileExists(inputFilePath)
-			if err != nil {
-				log.Fatal(err)
-			}
-			if !inputFileExists {
-				log.Fatalf("Input file \"%s\" does not exist.\n", inputFilePath)
-			}
-
-			// check that output file does not already exist
-			outputFileExists, err := utils.FileExists(outputFilePath)
-			if err != nil {
-				log.Fatal(err)
-			}
-			if outputFileExists && !encryptionForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
-				fmt.Println("Operation cancelled by user.")
-				os.Exit(0)
-			}
-
 			// check crypto algorithm
 			algo, ok := algos.Implemented[encryptionAlgorithmName]
 			if !ok {
-				fmt.Printf("Unsupported encryption algorithm \"%s\". Implemented algorithms: (%s).", encryptionAlgorithmName, strings.Join(algos.GetImplementedAlgoNames(), ", "))
+				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm %q", encryptionAlgorithmName)
 				os.Exit(1)
 			}
 
-			// open input file
-			in, err := os.Open(inputFilePath)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer in.Close()
-
-			// open output file
-			out, err := os.Create(outputFilePath)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer out.Close()
-
-			// encrypt
-			if err := algo.Encrypt(in, out, utils.RequestUserPassword()); err != nil {
-				_ = os.Remove(outputFilePath)
-				log.Fatal(err)
-			}
-
-			// remove original file if flag was set
-			if encryptionReplace {
-				if err := os.Remove(inputFilePath); err != nil {
-					log.Fatal(err)
-				}
+			// process file
+			if err := utils.ProcessFile(args[0], args[1], encryptionForceOverwrite, encryptionReplaceOriginal, algo.Encrypt); err != nil {
+				fmt.Fprintf(os.Stderr, "failed encrypting: %v\n", err)
+				os.Exit(1)
 			}
 		},
 	}
 	encryptCommand.Flags().StringVarP(&encryptionAlgorithmName, "algorithm", "x", algos.Default.Name(), fmt.Sprintf("encryption algorithm (%s)", strings.Join(algos.GetImplementedAlgoNames(), ", ")))
 	encryptCommand.Flags().BoolVarP(&encryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
-	encryptCommand.Flags().BoolVarP(&encryptionReplace, "replace", "r", false, "remove source file after encryption")
+	encryptCommand.Flags().BoolVarP(&encryptionReplaceOriginal, "replace", "r", false, "remove source file after encryption")
 
 	//* Decrypt Command */
 	decryptCommand := &cobra.Command{
@@ -146,67 +102,23 @@ func main() {
 				os.Exit(1)
 			}
 
-			// read input and output file paths from arguments
-			inputFilePath := args[0]
-			outputFilePath := args[1]
-
-			// check that input file exists
-			inputFileExists, err := utils.FileExists(inputFilePath)
-			if err != nil {
-				log.Fatal(err)
-			}
-			if !inputFileExists {
-				log.Fatalf("Input file \"%s\" does not exist.\n", inputFilePath)
-			}
-
-			// check that output file does not already exist, eventually ask the user to overwrite
-			outputFileExists, err := utils.FileExists(outputFilePath)
-			if err != nil {
-				log.Fatal(err)
-			}
-			if outputFileExists && !decryptionForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
-				fmt.Println("Operation cancelled by user.")
-				os.Exit(0)
-			}
-
 			// check crypto algorithm
 			algo, ok := algos.Implemented[decryptionAlgorithmName]
 			if !ok {
-				fmt.Printf("Unsupported decryption algorithm \"%s\". Implemented algorithms: (%s).", decryptionAlgorithmName, strings.Join(algos.GetImplementedAlgoNames(), ", "))
+				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm %q", decryptionAlgorithmName)
 				os.Exit(1)
 			}
 
-			// open input file
-			in, err := os.Open(inputFilePath)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer in.Close()
-
-			// open output file
-			out, err := os.Create(outputFilePath)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer out.Close()
-
-			// decrypt
-			if err := algo.Decrypt(in, out, utils.RequestUserPassword()); err != nil {
-				_ = os.Remove(outputFilePath)
-				log.Fatal(err)
-			}
-
-			// remove original file if flag was set
-			if decryptionReplace {
-				if err := os.Remove(inputFilePath); err != nil {
-					log.Fatal(err)
-				}
+			// process file
+			if err := utils.ProcessFile(args[0], args[1], decryptionForceOverwrite, decryptionReplaceOriginal, algo.Decrypt); err != nil {
+				fmt.Fprintf(os.Stderr, "failed decrypting: %v\n", err)
+				os.Exit(1)
 			}
 		},
 	}
 	decryptCommand.Flags().StringVarP(&decryptionAlgorithmName, "algorithm", "x", algos.Default.Name(), fmt.Sprintf("decryption algorithm (%s)", strings.Join(algos.GetImplementedAlgoNames(), ", ")))
 	decryptCommand.Flags().BoolVarP(&decryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
-	decryptCommand.Flags().BoolVarP(&decryptionReplace, "replace", "r", false, "remove source file after decryption")
+	decryptCommand.Flags().BoolVarP(&decryptionReplaceOriginal, "replace", "r", false, "remove source file after decryption")
 
 	//* Display Algos Command */
 	displayAlgosCommand := &cobra.Command{
