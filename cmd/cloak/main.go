@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/astrorick/cloak/pkg/algos"
@@ -13,26 +11,6 @@ import (
 	"github.com/astrorick/semantika"
 	"github.com/spf13/cobra"
 )
-
-//* Cloak Logic */
-
-type CryptoAlgorithm interface {
-	Name() string
-	Description() string
-	Encrypt(input io.Reader, output io.Writer, psw string) error
-	Decrypt(input io.Reader, output io.Writer, psw string) error
-}
-
-var implementedAlgorithms = map[string]CryptoAlgorithm{
-	//* Advanced Encryption Standard (AES) Family */
-	"aesgcm128": algos.NewAESGCM128(),
-	"aesgcm192": algos.NewAESGCM192(),
-	"aesgcm256": algos.NewAESGCM256(),
-
-	//* ChaCha20 Family */
-	"chacha20poly1305": algos.NewChaCha20Poly1305(),
-}
-var defaultAlgorithm = implementedAlgorithms["aesgcm256"]
 
 //* CLI Logic */
 
@@ -44,29 +22,33 @@ func main() {
 		Patch: 0,
 	}
 
-	//* Command Line Args and Flags Parsing */
 	var (
+		//* Root Command Flags */
 		displayVersion bool // whether to display program version
 
+		//* Encrypt Command Flags */
 		encryptionAlgorithmName  string // name of algorithm used for encryption
 		encryptionForceOverwrite bool   // whether to automatically overwrite output file
 		encryptionReplace        bool   // whether to remove the source file after encryption
 
+		//* Decrypt Command Flags */
 		decryptionAlgorithmName  string // name of algorithm used for decryption
 		decryptionForceOverwrite bool   // whether to automatically overwrite output file
 		decryptionReplace        bool   // whether to remove the source file after decryption
 	)
+
+	//* Root Command */
 	rootCommand := &cobra.Command{
 		Use:   "cloak",
 		Short: "Cloak allows you to encrypt or decrypt files.",
 		Run: func(cmd *cobra.Command, args []string) {
 			// display program version and exit if version flag is present
 			if displayVersion {
-				fmt.Printf("Cloak v%s by Astrorick.\n", appVersion.String())
+				utils.PrintAppVersion(appVersion)
 				os.Exit(0)
 			}
 
-			// display help and exit if no args were provided
+			// display help and exit if no args were provided instead
 			if len(args) == 0 {
 				_ = cmd.Help()
 				os.Exit(0)
@@ -76,6 +58,9 @@ func main() {
 			DisableDefaultCmd: true, // this disables the "completion" command which is shown dy default
 		},
 	}
+	rootCommand.Flags().BoolVarP(&displayVersion, "version", "v", false, "program version")
+
+	//* Encrypt Command */
 	encryptCommand := &cobra.Command{
 		Use:   "enc input output",
 		Short: "Encrypt files",
@@ -111,9 +96,9 @@ func main() {
 			}
 
 			// check crypto algorithm
-			algo, ok := implementedAlgorithms[encryptionAlgorithmName]
+			algo, ok := algos.Implemented[encryptionAlgorithmName]
 			if !ok {
-				fmt.Printf("Unsupported encryption algorithm \"%s\". Implemented algorithms: (%s).", encryptionAlgorithmName, strings.Join(getAlgorithmNames(), ", "))
+				fmt.Printf("Unsupported encryption algorithm \"%s\". Implemented algorithms: (%s).", encryptionAlgorithmName, strings.Join(algos.GetImplementedAlgoNames(), ", "))
 				os.Exit(1)
 			}
 
@@ -145,6 +130,11 @@ func main() {
 			}
 		},
 	}
+	encryptCommand.Flags().StringVarP(&encryptionAlgorithmName, "algorithm", "x", algos.Default.Name(), fmt.Sprintf("encryption algorithm (%s)", strings.Join(algos.GetImplementedAlgoNames(), ", ")))
+	encryptCommand.Flags().BoolVarP(&encryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
+	encryptCommand.Flags().BoolVarP(&encryptionReplace, "replace", "r", false, "remove source file after encryption")
+
+	//* Decrypt Command */
 	decryptCommand := &cobra.Command{
 		Use:   "dec input output",
 		Short: "Decrypt files",
@@ -180,9 +170,9 @@ func main() {
 			}
 
 			// check crypto algorithm
-			algo, ok := implementedAlgorithms[decryptionAlgorithmName]
+			algo, ok := algos.Implemented[decryptionAlgorithmName]
 			if !ok {
-				fmt.Printf("Unsupported decryption algorithm \"%s\". Implemented algorithms: (%s).", decryptionAlgorithmName, strings.Join(getAlgorithmNames(), ", "))
+				fmt.Printf("Unsupported decryption algorithm \"%s\". Implemented algorithms: (%s).", decryptionAlgorithmName, strings.Join(algos.GetImplementedAlgoNames(), ", "))
 				os.Exit(1)
 			}
 
@@ -214,18 +204,23 @@ func main() {
 			}
 		},
 	}
+	decryptCommand.Flags().StringVarP(&decryptionAlgorithmName, "algorithm", "x", algos.Default.Name(), fmt.Sprintf("decryption algorithm (%s)", strings.Join(algos.GetImplementedAlgoNames(), ", ")))
+	decryptCommand.Flags().BoolVarP(&decryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
+	decryptCommand.Flags().BoolVarP(&decryptionReplace, "replace", "r", false, "remove source file after decryption")
+
+	//* Display Algos Command */
 	displayAlgosCommand := &cobra.Command{
 		Use:   "algos",
-		Short: "List implemented algorithms",
-		Long:  "Display a list of implemented algorithms for encryption and decryption",
+		Short: "List implemented crypto algorithms",
+		Long:  "Display a list of implemented cryptographic algorithms for encryption and decryption.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println("Implemented algorithms:")
 
-			for _, algoName := range getAlgorithmNames() {
-				algo := implementedAlgorithms[algoName]
+			for _, algoName := range algos.GetImplementedAlgoNames() {
+				algo := algos.Implemented[algoName]
 				defaultMarker := ""
-				if algoName == defaultAlgorithm.Name() {
+				if algoName == algos.Default.Name() {
 					defaultMarker = " (default)"
 				}
 
@@ -233,42 +228,21 @@ func main() {
 			}
 		},
 	}
+
+	//* Display Version Command */
 	displayVersionCommand := &cobra.Command{
 		Use:   "version",
 		Short: "Display program version",
-		Long:  "Display the current version of this program",
+		Long:  "Display the current version of this program.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("Cloak v%s by Astrorick.\n", appVersion.String())
+			utils.PrintAppVersion(appVersion)
 		},
 	}
 
-	//* Register Flags and Commands */
-	rootCommand.Flags().BoolVarP(&displayVersion, "version", "v", false, "program version")
-	encryptCommand.Flags().StringVarP(&encryptionAlgorithmName, "algorithm", "x", defaultAlgorithm.Name(), fmt.Sprintf("encryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
-	encryptCommand.Flags().BoolVarP(&encryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
-	encryptCommand.Flags().BoolVarP(&encryptionReplace, "replace", "r", false, "remove source file after encryption")
-	decryptCommand.Flags().StringVarP(&decryptionAlgorithmName, "algorithm", "x", defaultAlgorithm.Name(), fmt.Sprintf("decryption algorithm (%s)", strings.Join(getAlgorithmNames(), ", ")))
-	decryptCommand.Flags().BoolVarP(&decryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
-	decryptCommand.Flags().BoolVarP(&decryptionReplace, "replace", "r", false, "remove source file after decryption")
-	rootCommand.AddCommand(encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
-
 	//* Run Root Command */
+	rootCommand.AddCommand(encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
 	if err := rootCommand.Execute(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-//* Auxiliary Functions */
-
-// getAlgorithmNames returns a strings slice with the names of implemented algorithms
-func getAlgorithmNames() []string {
-	algoNames := make([]string, 0, len(implementedAlgorithms))
-	for algoName := range implementedAlgorithms {
-		algoNames = append(algoNames, algoName)
-	}
-
-	slices.Sort(algoNames)
-
-	return algoNames
 }

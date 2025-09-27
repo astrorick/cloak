@@ -1,6 +1,11 @@
 package algos
 
-import "io"
+import (
+	"io"
+	"slices"
+)
+
+//* Crypto Algorithms */
 
 // CryptoAlgorithm is the interface each implemented crypto algorithm must satisfy.
 type CryptoAlgorithm interface {
@@ -10,6 +15,7 @@ type CryptoAlgorithm interface {
 	Decrypt(input io.Reader, output io.Writer, psw string) error
 }
 
+// Implemented maps implemented algorithms to their internal name.
 var Implemented = map[string]CryptoAlgorithm{
 	//* Advanced Encryption Standard (AES) Family */
 	"aesgcm128": NewAESGCM128(),
@@ -20,4 +26,19 @@ var Implemented = map[string]CryptoAlgorithm{
 	"chacha20poly1305": NewChaCha20Poly1305(),
 }
 
+// Default represents the default crypto algorithm used when no flag is passed.
 var Default = Implemented["aesgcm256"]
+
+//* Auxiliary Functions */
+
+// GetImplementedAlgoNames returns a strings slice with the names of implemented algorithms.
+func GetImplementedAlgoNames() []string {
+	algoNames := make([]string, 0, len(Implemented))
+	for algoName := range Implemented {
+		algoNames = append(algoNames, algoName)
+	}
+
+	slices.Sort(algoNames)
+
+	return algoNames
+}
