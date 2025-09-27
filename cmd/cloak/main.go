@@ -23,15 +23,15 @@ func main() {
 	}
 
 	var (
-		//* Root Command Flags */
+		//* Root Command Args and Flags */
 		displayVersion bool // whether to display program version
 
-		//* Encrypt Command Flags */
+		//* Encrypt Command Args and Flags */
 		encryptionAlgorithmName  string // name of algorithm used for encryption
 		encryptionForceOverwrite bool   // whether to automatically overwrite output file
 		encryptionReplace        bool   // whether to remove the source file after encryption
 
-		//* Decrypt Command Flags */
+		//* Decrypt Command Args and Flags */
 		decryptionAlgorithmName  string // name of algorithm used for decryption
 		decryptionForceOverwrite bool   // whether to automatically overwrite output file
 		decryptionReplace        bool   // whether to remove the source file after decryption
@@ -159,7 +159,7 @@ func main() {
 				log.Fatalf("Input file \"%s\" does not exist.\n", inputFilePath)
 			}
 
-			// check that output file does not already exist
+			// check that output file does not already exist, eventually ask the user to overwrite
 			outputFileExists, err := utils.FileExists(outputFilePath)
 			if err != nil {
 				log.Fatal(err)
