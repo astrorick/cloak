@@ -66,23 +66,73 @@ func main() {
 		Short: "Encrypt files",
 		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -x flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
 		Run: func(cmd *cobra.Command, args []string) {
-			// check for correct number of arguments
+			// check arguments
 			if len(args) != 2 {
 				_ = cmd.Help()
+				os.Exit(1)
+			}
+
+			// read args
+			inputFilePath := args[0]
+			outputFilePath := args[1]
+
+			// check that input file exists
+			inputFileExists, err := utils.FileExists(inputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "input path error: %v\n", err)
+				os.Exit(1)
+			}
+			if !inputFileExists {
+				fmt.Fprintf(os.Stderr, "input file \"%s\" does not exist\n", inputFilePath)
+				os.Exit(1)
+			}
+
+			// check that output file does not already exist, eventually asking the user if he wants to overwrite it
+			outputFileExists, err := utils.FileExists(outputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "output path error: %v\n", err)
+				os.Exit(1)
+			}
+			if outputFileExists && !encryptionForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
+				fmt.Fprintf(os.Stderr, "operation cancelled by user\n")
 				os.Exit(1)
 			}
 
 			// check crypto algorithm
 			algo, ok := algos.Implemented[encryptionAlgorithmName]
 			if !ok {
-				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm %q", encryptionAlgorithmName)
+				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm \"%s\"\n", encryptionAlgorithmName)
 				os.Exit(1)
 			}
 
-			// process file
-			if err := utils.ProcessFile(args[0], args[1], encryptionForceOverwrite, encryptionReplaceOriginal, algo.Encrypt); err != nil {
-				fmt.Fprintf(os.Stderr, "failed encrypting: %v\n", err)
+			// open input file
+			inputFile, err := os.Open(inputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error opening input file \"%s\": %v\n", inputFilePath, err)
 				os.Exit(1)
+			}
+			defer inputFile.Close()
+
+			// open output file
+			outputFile, err := os.Create(outputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error writing to output file \"%s\": %v\n", outputFilePath, err)
+				os.Exit(1)
+			}
+			defer outputFile.Close()
+
+			// encrypt input file
+			if err := algo.Encrypt(inputFile, outputFile, utils.RequestUserPassword()); err != nil {
+				fmt.Fprintf(os.Stderr, "error encrypting input file: %v\n", err)
+				os.Exit(1)
+			}
+
+			// remove original file if requested
+			if encryptionReplaceOriginal {
+				if err := os.Remove(inputFilePath); err != nil {
+					fmt.Fprintf(os.Stderr, "error removing input file \"%s\": %v\n", inputFilePath, err)
+					os.Exit(1)
+				}
 			}
 		},
 	}
@@ -96,23 +146,73 @@ func main() {
 		Short: "Decrypt files",
 		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -x flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
 		Run: func(cmd *cobra.Command, args []string) {
-			// check for correct number of arguments
+			// check arguments
 			if len(args) != 2 {
 				_ = cmd.Help()
+				os.Exit(1)
+			}
+
+			// read args
+			inputFilePath := args[0]
+			outputFilePath := args[1]
+
+			// check that input file exists
+			inputFileExists, err := utils.FileExists(inputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "input path error: %v\n", err)
+				os.Exit(1)
+			}
+			if !inputFileExists {
+				fmt.Fprintf(os.Stderr, "input file \"%s\" does not exist\n", inputFilePath)
+				os.Exit(1)
+			}
+
+			// check that output file does not already exist, eventually asking the user if he wants to overwrite it
+			outputFileExists, err := utils.FileExists(outputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "output path error: %v\n", err)
+				os.Exit(1)
+			}
+			if outputFileExists && !decryptionForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
+				fmt.Fprintf(os.Stderr, "operation cancelled by user\n")
 				os.Exit(1)
 			}
 
 			// check crypto algorithm
 			algo, ok := algos.Implemented[decryptionAlgorithmName]
 			if !ok {
-				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm %q", decryptionAlgorithmName)
+				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm \"%s\"\n", decryptionAlgorithmName)
 				os.Exit(1)
 			}
 
-			// process file
-			if err := utils.ProcessFile(args[0], args[1], decryptionForceOverwrite, decryptionReplaceOriginal, algo.Decrypt); err != nil {
-				fmt.Fprintf(os.Stderr, "failed decrypting: %v\n", err)
+			// open input file
+			inputFile, err := os.Open(inputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error opening input file \"%s\": %v\n", inputFilePath, err)
 				os.Exit(1)
+			}
+			defer inputFile.Close()
+
+			// open output file
+			outputFile, err := os.Create(outputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error writing to output file \"%s\": %v\n", outputFilePath, err)
+				os.Exit(1)
+			}
+			defer outputFile.Close()
+
+			// decrypt input file
+			if err := algo.Decrypt(inputFile, outputFile, utils.RequestUserPassword()); err != nil {
+				fmt.Fprintf(os.Stderr, "error decrypting input file: %v\n", err)
+				os.Exit(1)
+			}
+
+			// remove original file if requested
+			if decryptionReplaceOriginal {
+				if err := os.Remove(inputFilePath); err != nil {
+					fmt.Fprintf(os.Stderr, "error removing input file \"%s\": %v\n", inputFilePath, err)
+					os.Exit(1)
+				}
 			}
 		},
 	}

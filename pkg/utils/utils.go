@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"regexp"
 	"slices"
@@ -18,56 +17,6 @@ import (
 // PrintAppVersion prints the provided app version to the terminal.
 func PrintAppVersion(appVersion *semantika.Version) {
 	fmt.Printf("Cloak v%s by Astrorick.\n", appVersion.String())
-}
-
-// ProcessFile processes the input file using the specified algorithm and flags, writing the result to the output file while taking care of I/O handling. The action function is also provided as an argument.
-func ProcessFile(inputFilePath string, outputFilePath string, forceOverwrite bool, replaceOriginal bool, actionFunc func(io.Reader, io.Writer, string) error) error {
-	// check that input file exists
-	inputFileExists, err := FileExists(inputFilePath)
-	if err != nil {
-		return err
-	}
-	if !inputFileExists {
-		return fmt.Errorf("input file %q does not exist", inputFilePath)
-	}
-
-	// check that output file does not already exist, eventually asking the user to overwrite it
-	outputFileExists, err := FileExists(outputFilePath)
-	if err != nil {
-		return err
-	}
-	if outputFileExists && !forceOverwrite && !ConfirmOverwrite(outputFilePath) {
-		return fmt.Errorf("operation cancelled by user")
-	}
-
-	// open input file
-	inputFile, err := os.Open(inputFilePath)
-	if err != nil {
-		return err
-	}
-	defer inputFile.Close()
-
-	// open output file
-	outputFile, err := os.Create(outputFilePath)
-	if err != nil {
-		return err
-	}
-	defer outputFile.Close()
-
-	// process with action function
-	if err := actionFunc(inputFile, outputFile, RequestUserPassword()); err != nil {
-		_ = os.Remove(outputFilePath)
-		return err
-	}
-
-	// remove original file if needed
-	if replaceOriginal {
-		if err := os.Remove(inputFilePath); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // FileExists returns (true, nil) if the file specified by filePath exists, (false, nil) if it doesn't, or (false, err) if there were problems accessing the file.
