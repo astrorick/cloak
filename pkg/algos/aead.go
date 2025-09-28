@@ -103,7 +103,7 @@ func (aead *AEAD) Description() string {
 	return aead.DescStr
 }
 
-func (aead *AEAD) Encrypt(input io.Reader, output io.Writer, psw string) error {
+func (aead *AEAD) EncryptWithPsw(input io.Reader, output io.Writer, psw string) error {
 	// generate random salt for key derivation
 	salt := make([]byte, aead.SaltSize)
 	if _, err := rand.Read(salt); err != nil {
@@ -151,7 +151,7 @@ func (aead *AEAD) Encrypt(input io.Reader, output io.Writer, psw string) error {
 	return nil
 }
 
-func (aead *AEAD) Decrypt(input io.Reader, output io.Writer, psw string) error {
+func (aead *AEAD) DecryptWithPsw(input io.Reader, output io.Writer, psw string) error {
 	// read salt from input file
 	salt := make([]byte, aead.SaltSize)
 	if _, err := io.ReadFull(input, salt); err != nil {

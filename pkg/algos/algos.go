@@ -11,8 +11,8 @@ import (
 type CryptoAlgorithm interface {
 	Name() string
 	Description() string
-	Encrypt(input io.Reader, output io.Writer, psw string) error
-	Decrypt(input io.Reader, output io.Writer, psw string) error
+	EncryptWithPsw(input io.Reader, output io.Writer, psw string) error
+	DecryptWithPsw(input io.Reader, output io.Writer, psw string) error
 }
 
 // Implemented maps implemented algorithms to their internal name.

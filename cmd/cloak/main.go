@@ -122,7 +122,7 @@ func main() {
 			defer outputFile.Close()
 
 			// encrypt input file
-			if err := algo.Encrypt(inputFile, outputFile, utils.RequestUserPassword()); err != nil {
+			if err := algo.EncryptWithPsw(inputFile, outputFile, utils.RequestUserPassword()); err != nil {
 				fmt.Fprintf(os.Stderr, "error encrypting input file: %v\n", err)
 				os.Exit(1)
 			}
@@ -202,7 +202,7 @@ func main() {
 			defer outputFile.Close()
 
 			// decrypt input file
-			if err := algo.Decrypt(inputFile, outputFile, utils.RequestUserPassword()); err != nil {
+			if err := algo.DecryptWithPsw(inputFile, outputFile, utils.RequestUserPassword()); err != nil {
 				fmt.Fprintf(os.Stderr, "error decrypting input file: %v\n", err)
 				os.Exit(1)
 			}
