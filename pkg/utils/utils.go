@@ -64,9 +64,6 @@ func ConfirmOverwrite(filePath string) bool {
 
 // RequestUserPassword allows the user to input a password while following security guidelines (minimum length, allowed characters, etc.).
 func RequestUserPassword() string {
-	// define set of allowed characters in passwords
-	allowedCharacters := regexp.MustCompile(`^[\x21-\x7E]+$`)
-
 	for {
 		// ask for password
 		fmt.Print("Enter password: ")
@@ -74,15 +71,9 @@ func RequestUserPassword() string {
 		fmt.Println()
 		providedPassword := string(bytePassword)
 
-		// check password length
-		if len(providedPassword) < 8 {
-			fmt.Println("Password too short. Minimum 8 characters.")
-			continue
-		}
-
-		// check password content
-		if !allowedCharacters.MatchString(providedPassword) {
-			fmt.Println("Password contains invalid characters. Use only A-Z, a-z, 0-9, and standard special characters (no spaces).")
+		// validate password
+		if !ValidatePassword(providedPassword) {
+			fmt.Println("Invalid password. Use only A-Z, a-z, 0-9, and standard special characters (no spaces). Minimum 8 characters.")
 			continue
 		}
 
@@ -99,4 +90,19 @@ func RequestUserPassword() string {
 
 		fmt.Println("Passwords do not match. Try again.")
 	}
+}
+
+// ValidatePassword evaluates the suitability of the provided password, returning true if the password is valid and false otherwise.
+func ValidatePassword(psw string) bool {
+	// check password length
+	if len(psw) < 8 {
+		return false
+	}
+
+	// check for valid password content
+	if !regexp.MustCompile(`^[\x21-\x7E]+$`).MatchString(psw) {
+		return false
+	}
+
+	return true
 }

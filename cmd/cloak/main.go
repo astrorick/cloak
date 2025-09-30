@@ -70,7 +70,7 @@ func main() {
 		Run: func(cmd *cobra.Command, args []string) {
 			// check arguments
 			if len(args) != 2 {
-				_ = cmd.Help()
+				fmt.Fprintf(os.Stderr, "invalid command usage\n")
 				os.Exit(1)
 			}
 
@@ -111,7 +111,10 @@ func main() {
 			if encryptionPassword == "" {
 				encryptionPassword = utils.RequestUserPassword()
 			} else {
-				// TODO: add password check
+				if !utils.ValidatePassword(encryptionPassword) {
+					fmt.Fprintf(os.Stderr, "invalid encryption password\n")
+					os.Exit(1)
+				}
 			}
 
 			// open input file
@@ -158,7 +161,7 @@ func main() {
 		Run: func(cmd *cobra.Command, args []string) {
 			// check arguments
 			if len(args) != 2 {
-				_ = cmd.Help()
+				fmt.Fprintf(os.Stderr, "invalid command usage\n")
 				os.Exit(1)
 			}
 
@@ -199,7 +202,10 @@ func main() {
 			if decryptionPassword == "" {
 				decryptionPassword = utils.RequestUserPassword()
 			} else {
-				// TODO: add password check
+				if !utils.ValidatePassword(decryptionPassword) {
+					fmt.Fprintf(os.Stderr, "invalid decryption password\n")
+					os.Exit(1)
+				}
 			}
 
 			// open input file
