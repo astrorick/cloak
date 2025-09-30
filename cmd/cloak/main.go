@@ -28,11 +28,13 @@ func main() {
 
 		//* Encrypt Command Args and Flags */
 		encryptionAlgorithmName   string // name of algorithm used for encryption
+		encryptionPassword        string // password to be used for encryption
 		encryptionForceOverwrite  bool   // whether to automatically overwrite output file
 		encryptionReplaceOriginal bool   // whether to remove the source file after encryption
 
 		//* Decrypt Command Args and Flags */
 		decryptionAlgorithmName   string // name of algorithm used for decryption
+		decryptionPassword        string // password to be used for decryption
 		decryptionForceOverwrite  bool   // whether to automatically overwrite output file
 		decryptionReplaceOriginal bool   // whether to remove the source file after decryption
 	)
@@ -105,6 +107,13 @@ func main() {
 				os.Exit(1)
 			}
 
+			// check password
+			if encryptionPassword == "" {
+				encryptionPassword = utils.RequestUserPassword()
+			} else {
+				// TODO: add password check
+			}
+
 			// open input file
 			inputFile, err := os.Open(inputFilePath)
 			if err != nil {
@@ -122,7 +131,7 @@ func main() {
 			defer outputFile.Close()
 
 			// encrypt input file
-			if err := algo.EncryptWithPsw(inputFile, outputFile, utils.RequestUserPassword()); err != nil {
+			if err := algo.EncryptWithPsw(inputFile, outputFile, encryptionPassword); err != nil {
 				fmt.Fprintf(os.Stderr, "error encrypting input file: %v\n", err)
 				os.Exit(1)
 			}
@@ -137,6 +146,7 @@ func main() {
 		},
 	}
 	encryptCommand.Flags().StringVarP(&encryptionAlgorithmName, "algorithm", "x", algos.Default.Name(), fmt.Sprintf("encryption algorithm (%s)", strings.Join(algos.GetImplementedAlgoNames(), ", ")))
+	encryptCommand.Flags().StringVarP(&encryptionPassword, "password", "p", "", "password used for encryption")
 	encryptCommand.Flags().BoolVarP(&encryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
 	encryptCommand.Flags().BoolVarP(&encryptionReplaceOriginal, "replace", "r", false, "remove source file after encryption")
 
@@ -185,6 +195,13 @@ func main() {
 				os.Exit(1)
 			}
 
+			// check password
+			if decryptionPassword == "" {
+				decryptionPassword = utils.RequestUserPassword()
+			} else {
+				// TODO: add password check
+			}
+
 			// open input file
 			inputFile, err := os.Open(inputFilePath)
 			if err != nil {
@@ -202,7 +219,7 @@ func main() {
 			defer outputFile.Close()
 
 			// decrypt input file
-			if err := algo.DecryptWithPsw(inputFile, outputFile, utils.RequestUserPassword()); err != nil {
+			if err := algo.DecryptWithPsw(inputFile, outputFile, decryptionPassword); err != nil {
 				fmt.Fprintf(os.Stderr, "error decrypting input file: %v\n", err)
 				os.Exit(1)
 			}
@@ -217,6 +234,7 @@ func main() {
 		},
 	}
 	decryptCommand.Flags().StringVarP(&decryptionAlgorithmName, "algorithm", "x", algos.Default.Name(), fmt.Sprintf("decryption algorithm (%s)", strings.Join(algos.GetImplementedAlgoNames(), ", ")))
+	decryptCommand.Flags().StringVarP(&decryptionPassword, "password", "p", "", "password used for decryption")
 	decryptCommand.Flags().BoolVarP(&decryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
 	decryptCommand.Flags().BoolVarP(&decryptionReplaceOriginal, "replace", "r", false, "remove source file after decryption")
 
