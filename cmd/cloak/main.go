@@ -133,7 +133,7 @@ func main() {
 		},
 	}
 	keygenCommand.Flags().StringVarP(&keygenMethodName, "method", "m", keygen.Default.Name(), "key derivation method")
-	keygenCommand.Flags().StringVarP(&keygenMethodName, "password", "p", "", "password for key generation")
+	keygenCommand.Flags().StringVarP(&keygenPassword, "password", "p", "", "password for key generation")
 
 	//* Encrypt Command */
 	encryptCommand := &cobra.Command{

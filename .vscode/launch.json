@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/cloak/main.go",
-            "args": ["keygen", "${workspaceFolder}/tests/keygen/cloak.key", "-m", "argon2"]
+            "args": ["keygen", "${workspaceFolder}/tests/keygen/cloak.key", "-m", "argon2", "-p", "password"]
         },
         {
             "name": "Encrypt",
@@ -18,7 +18,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/cloak/main.go",
-            "args": ["enc", "${workspaceFolder}/tests/encryption/source.txt", "${workspaceFolder}/tests/encryption/cipher.clk", "-x", "chacha20poly1305", "-p", "ciaociao", "-f"]
+            "args": ["enc", "${workspaceFolder}/tests/encryption/source.txt", "${workspaceFolder}/tests/encryption/cipher.clk", "-x", "chacha20poly1305", "-p", "password", "-f"]
         },
         {
             "name": "Decrypt",
@@ -26,7 +26,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/cloak/main.go",
-            "args": ["dec", "${workspaceFolder}/tests/decryption/source.clk", "${workspaceFolder}/tests/decryption/plain.txt", "-x", "chacha20poly1305", "-p", "ciaociao", "-f"]
+            "args": ["dec", "${workspaceFolder}/tests/decryption/source.clk", "${workspaceFolder}/tests/decryption/plain.txt", "-x", "chacha20poly1305", "-p", "password", "-f"]
         },
         {
             "name": "Algos",
