@@ -5,12 +5,11 @@ import (
 	"slices"
 )
 
-//* Crypto Algorithms */
-
-// CryptoAlgorithm is the interface each implemented crypto algorithm must satisfy.
+// CryptoAlgorithm is the interface that each implemented crypto algorithm must satisfy.
 type CryptoAlgorithm interface {
 	Name() string
 	Description() string
+
 	EncryptWithPsw(input io.Reader, output io.Writer, psw string) error
 	DecryptWithPsw(input io.Reader, output io.Writer, psw string) error
 }
@@ -28,8 +27,6 @@ var Implemented = map[string]CryptoAlgorithm{
 
 // Default represents the default crypto algorithm used when no flag is passed.
 var Default = Implemented["aesgcm256"]
-
-//* Auxiliary Functions */
 
 // GetImplementedAlgoNames returns a strings slice with the names of implemented algorithms.
 func GetImplementedAlgoNames() []string {

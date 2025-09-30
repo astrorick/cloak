@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Keygen",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/cloak/main.go",
+            "args": ["keygen", "${workspaceFolder}/tests/keygen/cloak.key", "-m", "argon2"]
+        },
+        {
             "name": "Encrypt",
             "type": "go",
             "request": "launch",

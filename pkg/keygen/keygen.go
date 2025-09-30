@@ -1,37 +1,18 @@
 package keygen
 
-import (
-	"crypto/pbkdf2"
-	"hash"
-
-	"golang.org/x/crypto/argon2"
-)
-
+// Keygen is the interface that each implemented key derivation method must satisfy.
 type Keygen interface {
+	Name() string
+	Description() string
+
 	DeriveKey(psw string, salt []byte) ([]byte, error)
 }
 
-//* PBKDF Family */
-
-type PBKDFKeygen struct {
-	Hash    func() hash.Hash
-	Iter    int
-	KeySize int
+// Implemented maps implemented methods to their internal name.
+var Implemented = map[string]Keygen{
+	"argon2": NewArgon2Keygen(),
+	"pbkdf2": NewPBKDF2Keygen(),
 }
 
-func (kg *PBKDFKeygen) DeriveKey(psw string, salt []byte) ([]byte, error) {
-	return pbkdf2.Key(kg.Hash, psw, salt, kg.Iter, kg.KeySize)
-}
-
-//* Argon Family */
-
-type ArgonKeygen struct {
-	Time    uint32
-	Memory  uint32
-	Threads uint8
-	KeySize uint32
-}
-
-func (kg *ArgonKeygen) DeriveKey(psw string, salt []byte) ([]byte, error) {
-	return argon2.IDKey([]byte(psw), salt, kg.Time, kg.Memory, kg.Threads, kg.KeySize), nil
-}
+// Default represents the default keygen method used when no flag is passed.
+var Default = Implemented["argon2"]

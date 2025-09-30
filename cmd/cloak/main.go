@@ -1,12 +1,13 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/astrorick/cloak/pkg/algos"
+	"github.com/astrorick/cloak/pkg/keygen"
 	"github.com/astrorick/cloak/pkg/utils"
 	"github.com/astrorick/semantika"
 	"github.com/spf13/cobra"
@@ -25,6 +26,10 @@ func main() {
 	var (
 		//* Root Command Args and Flags */
 		displayVersion bool // whether to display program version
+
+		//* Keygen Command Args and Flags */
+		keygenMethodName string // name of keygen method used for key derivation
+		keygenPassword   string // password for key generation
 
 		//* Encrypt Command Args and Flags */
 		encryptionAlgorithmName   string // name of algorithm used for encryption
@@ -62,18 +67,81 @@ func main() {
 	}
 	rootCommand.Flags().BoolVarP(&displayVersion, "version", "v", false, "program version")
 
+	//* Keygen Command */
+	keygenCommand := &cobra.Command{
+		Use:   "keygen output",
+		Short: "Generate crypto keys",
+		Long:  "Generate a static cryptographic key that can be used to encrypt and decrypt files, and save it to a file.",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			// read args
+			outputFilePath := args[0]
+
+			// check that output file does not already exist, NEVER OVERWRITE
+			outputFileExists, err := utils.FileExists(outputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "output path error: %v\n", err)
+				os.Exit(1)
+			}
+			if outputFileExists {
+				fmt.Fprintf(os.Stderr, "output file \"%s\" already exists\n", outputFilePath)
+				os.Exit(1)
+			}
+
+			// check key derivation method
+			keygen, ok := keygen.Implemented[keygenMethodName]
+			if !ok {
+				fmt.Fprintf(os.Stderr, "unsupported key derivation method \"%s\"\n", keygenMethodName)
+				os.Exit(1)
+			}
+
+			// check password
+			if keygenPassword == "" {
+				keygenPassword = utils.RequestUserPassword()
+			} else {
+				if !utils.ValidatePassword(keygenPassword) {
+					fmt.Fprintf(os.Stderr, "invalid password\n")
+					os.Exit(1)
+				}
+			}
+
+			// generate random salt for key derivation
+			salt := make([]byte, 16)
+			if _, err := rand.Read(salt); err != nil {
+				fmt.Fprintf(os.Stderr, "error generating random salt: %v\n", err)
+			}
+
+			// derive cryptographic key
+			key, err := keygen.DeriveKey(keygenPassword, salt)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error generating key: %v\n", err)
+				os.Exit(1)
+			}
+
+			// open output file
+			outputFile, err := os.Create(outputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error writing to output file \"%s\": %v\n", outputFilePath, err)
+				os.Exit(1)
+			}
+			defer outputFile.Close()
+
+			// write key to output file
+			if _, err := outputFile.Write(key); err != nil {
+				fmt.Fprintf(os.Stderr, "error writing key to output file: %v", err)
+			}
+		},
+	}
+	keygenCommand.Flags().StringVarP(&keygenMethodName, "method", "m", keygen.Default.Name(), "key derivation method")
+	keygenCommand.Flags().StringVarP(&keygenMethodName, "password", "p", "", "password for key generation")
+
 	//* Encrypt Command */
 	encryptCommand := &cobra.Command{
 		Use:   "enc input output",
 		Short: "Encrypt files",
 		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -x flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			// check arguments
-			if len(args) != 2 {
-				fmt.Fprintf(os.Stderr, "invalid command usage\n")
-				os.Exit(1)
-			}
-
 			// read args
 			inputFilePath := args[0]
 			outputFilePath := args[1]
@@ -112,7 +180,7 @@ func main() {
 				encryptionPassword = utils.RequestUserPassword()
 			} else {
 				if !utils.ValidatePassword(encryptionPassword) {
-					fmt.Fprintf(os.Stderr, "invalid encryption password\n")
+					fmt.Fprintf(os.Stderr, "invalid password\n")
 					os.Exit(1)
 				}
 			}
@@ -148,7 +216,7 @@ func main() {
 			}
 		},
 	}
-	encryptCommand.Flags().StringVarP(&encryptionAlgorithmName, "algorithm", "x", algos.Default.Name(), fmt.Sprintf("encryption algorithm (%s)", strings.Join(algos.GetImplementedAlgoNames(), ", ")))
+	encryptCommand.Flags().StringVarP(&encryptionAlgorithmName, "algorithm", "a", algos.Default.Name(), "encryption algorithm")
 	encryptCommand.Flags().StringVarP(&encryptionPassword, "password", "p", "", "password used for encryption")
 	encryptCommand.Flags().BoolVarP(&encryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
 	encryptCommand.Flags().BoolVarP(&encryptionReplaceOriginal, "replace", "r", false, "remove source file after encryption")
@@ -158,13 +226,8 @@ func main() {
 		Use:   "dec input output",
 		Short: "Decrypt files",
 		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -x flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			// check arguments
-			if len(args) != 2 {
-				fmt.Fprintf(os.Stderr, "invalid command usage\n")
-				os.Exit(1)
-			}
-
 			// read args
 			inputFilePath := args[0]
 			outputFilePath := args[1]
@@ -203,7 +266,7 @@ func main() {
 				decryptionPassword = utils.RequestUserPassword()
 			} else {
 				if !utils.ValidatePassword(decryptionPassword) {
-					fmt.Fprintf(os.Stderr, "invalid decryption password\n")
+					fmt.Fprintf(os.Stderr, "invalid password\n")
 					os.Exit(1)
 				}
 			}
@@ -239,7 +302,7 @@ func main() {
 			}
 		},
 	}
-	decryptCommand.Flags().StringVarP(&decryptionAlgorithmName, "algorithm", "x", algos.Default.Name(), fmt.Sprintf("decryption algorithm (%s)", strings.Join(algos.GetImplementedAlgoNames(), ", ")))
+	decryptCommand.Flags().StringVarP(&decryptionAlgorithmName, "algorithm", "a", algos.Default.Name(), "decryption algorithm")
 	decryptCommand.Flags().StringVarP(&decryptionPassword, "password", "p", "", "password used for decryption")
 	decryptCommand.Flags().BoolVarP(&decryptionForceOverwrite, "force", "f", false, "overwrite output file without asking")
 	decryptCommand.Flags().BoolVarP(&decryptionReplaceOriginal, "replace", "r", false, "remove source file after decryption")
@@ -277,7 +340,7 @@ func main() {
 	}
 
 	//* Run Root Command */
-	rootCommand.AddCommand(encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
+	rootCommand.AddCommand(keygenCommand, encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
 	if err := rootCommand.Execute(); err != nil {
 		log.Fatal(err)
 	}

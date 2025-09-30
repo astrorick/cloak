@@ -77,7 +77,7 @@ func RequestUserPassword() string {
 			continue
 		}
 
-		// confirm password
+		// ask for password again
 		fmt.Print("Confirm password: ")
 		byteConfirm, _ := term.ReadPassword(int(syscall.Stdin)) // using term for masked input
 		fmt.Println()
@@ -86,9 +86,10 @@ func RequestUserPassword() string {
 		// check if passwords match
 		if providedPassword == confirmPassword {
 			return providedPassword
+		} else {
+			fmt.Println("Passwords do not match. Try again.")
+			continue
 		}
-
-		fmt.Println("Passwords do not match. Try again.")
 	}
 }
 
