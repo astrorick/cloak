@@ -6,7 +6,7 @@ import (
 	"hash"
 )
 
-type PBKDF2Keygen struct {
+type PBKDF2KeyDer struct {
 	NameStr string
 	DescStr string
 
@@ -15,8 +15,8 @@ type PBKDF2Keygen struct {
 	KeySize int
 }
 
-func NewPBKDF2Keygen() *PBKDF2Keygen {
-	return &PBKDF2Keygen{
+func NewPBKDF2() *PBKDF2KeyDer {
+	return &PBKDF2KeyDer{
 		NameStr: "pbkdf2",
 		DescStr: "password-based key derivation function 2",
 
@@ -26,14 +26,14 @@ func NewPBKDF2Keygen() *PBKDF2Keygen {
 	}
 }
 
-func (kg *PBKDF2Keygen) Name() string {
+func (kg *PBKDF2KeyDer) Name() string {
 	return kg.NameStr
 }
 
-func (kg *PBKDF2Keygen) Description() string {
+func (kg *PBKDF2KeyDer) Description() string {
 	return kg.DescStr
 }
 
-func (kg *PBKDF2Keygen) DeriveKey(psw string, salt []byte) ([]byte, error) {
+func (kg *PBKDF2KeyDer) DeriveKey(psw string, salt []byte) ([]byte, error) {
 	return pbkdf2.Key(kg.Hash, psw, salt, kg.Iter, kg.KeySize)
 }

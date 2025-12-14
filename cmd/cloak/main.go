@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"fmt"
 	"log"
 	"os"
@@ -24,10 +23,6 @@ func main() {
 	var (
 		//* Root Command Args and Flags */
 		rootDisplayVersion bool // whether to display program version
-
-		//* Keygen Command Args and Flags */
-		keygenFuncName string // name of key derivation function to use
-		keygenPassword string // password for key generation
 
 		//* Encrypt Command Args and Flags */
 		encryptAlgorithmName  string // name of algorithm used for encryption
@@ -86,33 +81,10 @@ func main() {
 				os.Exit(1)
 			}
 
-			// check key derivation function name
-			keygen, ok := keygen.Implemented[keygenFuncName]
-			if !ok {
-				fmt.Fprintf(os.Stderr, "unsupported key derivation function \"%s\"\n", keygenFuncName)
-				os.Exit(1)
-			}
-
-			// check password
-			if keygenPassword == "" {
-				keygenPassword = utils.RequestUserPassword()
-			} else {
-				if !utils.ValidatePassword(keygenPassword) {
-					fmt.Fprintf(os.Stderr, "invalid password\n")
-					os.Exit(1)
-				}
-			}
-
-			// generate random salt for key derivation
-			salt := make([]byte, 16)
-			if _, err := rand.Read(salt); err != nil {
-				fmt.Fprintf(os.Stderr, "error generating random salt: %v\n", err)
-			}
-
-			// derive cryptographic key
-			key, err := keygen.DeriveKey(keygenPassword, salt)
+			// generate random cryptographic key
+			key, err := keygen.GenerateKey()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error generating key: %v\n", err)
+				fmt.Fprintf(os.Stderr, "error generating random key: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -130,8 +102,6 @@ func main() {
 			}
 		},
 	}
-	keygenCommand.Flags().StringVarP(&keygenFuncName, "function", "f", keygen.Default.Name(), "key derivation function")
-	keygenCommand.Flags().StringVarP(&keygenPassword, "password", "p", "", "password for key generation")
 
 	//* Encrypt Command */
 	encryptCommand := &cobra.Command{
