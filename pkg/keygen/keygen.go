@@ -14,5 +14,5 @@ var Implemented = map[string]Keygen{
 	"pbkdf2": NewPBKDF2Keygen(),
 }
 
-// Default represents the default keygen method used when no flag is passed.
+// Default represents the default key generation function used when no flag is passed.
 var Default = Implemented["argon2"]

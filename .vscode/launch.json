@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/cloak/main.go",
-            "args": ["keygen", "${workspaceFolder}/tests/keygen/cloak.key", "-m", "argon2", "-p", "password"]
+            "args": ["keygen", "${workspaceFolder}/tests/keygen/cloak.key", "-f", "pbkdf2", "-p", "password"]
         },
         {
             "name": "Encrypt",

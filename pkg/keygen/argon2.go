@@ -1,6 +1,8 @@
 package keygen
 
-import "golang.org/x/crypto/argon2"
+import (
+	"golang.org/x/crypto/argon2"
+)
 
 type Argon2Keygen struct {
 	NameStr string

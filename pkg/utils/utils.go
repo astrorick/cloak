@@ -14,12 +14,12 @@ import (
 	"golang.org/x/term"
 )
 
-// PrintAppVersion prints the provided app version to the terminal.
-func PrintAppVersion(appVersion *semantika.Version) {
+// PrintVersion prints the provided app version to the terminal.
+func PrintVersion(appVersion *semantika.Version) {
 	fmt.Printf("Cloak v%s by Astrorick.\n", appVersion.String())
 }
 
-// FileExists returns (true, nil) if the file specified by filePath exists, (false, nil) if it doesn't, or (false, err) if there were problems accessing the file.
+// FileExists returns (true, nil) if the file specified by filePath exists, (false, nil) if it doesn't, or (false, err) if the file could not be accessed.
 func FileExists(filePath string) (bool, error) {
 	_, err := os.Stat(filePath)
 
