@@ -137,7 +137,7 @@ func main() {
 	encryptCommand := &cobra.Command{
 		Use:   "enc input output",
 		Short: "Encrypt files",
-		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -x flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
+		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			// read args
@@ -223,7 +223,7 @@ func main() {
 	decryptCommand := &cobra.Command{
 		Use:   "dec input output",
 		Short: "Decrypt files",
-		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -x flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
+		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			// read args

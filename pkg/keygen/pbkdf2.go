@@ -17,7 +17,7 @@ type PBKDF2Keygen struct {
 
 func NewPBKDF2Keygen() *PBKDF2Keygen {
 	return &PBKDF2Keygen{
-		NameStr: "pbkdf",
+		NameStr: "pbkdf2",
 		DescStr: "password-based key derivation function 2",
 
 		Hash:    sha512.New, // hasing function for key derivation
