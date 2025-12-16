@@ -18,7 +18,7 @@ type AEAD struct {
 	SaltSize  int
 	NonceSize int
 
-	Keygen    keygen.KeyDer
+	Keygen    keygen.KeyDerMethod
 	NewCipher func(key []byte) (cipher.AEAD, error)
 }
 
@@ -32,7 +32,7 @@ func newAESGCM(keySizeBytes int) *AEAD {
 		SaltSize:  16,
 		NonceSize: 12,
 
-		Keygen: &keygen.Argon2KeyDer{
+		Keygen: &keygen.Argon2{
 			Time:    8,
 			Memory:  128 * 1024,
 			Threads: 4,
@@ -76,7 +76,7 @@ func NewChaCha20Poly1305() *AEAD {
 		SaltSize:  16,
 		NonceSize: 12,
 
-		Keygen: &keygen.Argon2KeyDer{
+		Keygen: &keygen.Argon2{
 			Time:    8,
 			Memory:  128 * 1024,
 			Threads: 4,

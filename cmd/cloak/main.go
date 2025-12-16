@@ -21,16 +21,16 @@ func main() {
 	}
 
 	var (
-		//* Root Command Args and Flags */
-		rootDisplayVersion bool // whether to display program version
+		//* Root Command Flags */
+		rootDisplayVersion bool // whether to display program version and exit
 
-		//* Encrypt Command Args and Flags */
+		//* Encrypt Command Flags */
 		encryptAlgorithmName  string // name of algorithm used for encryption
 		encryptPassword       string // password to be used for encryption
 		encryptForceOverwrite bool   // whether to automatically overwrite output file
 		encryptRemoveOriginal bool   // whether to remove the source file after encryption
 
-		//* Decrypt Command Args and Flags */
+		//* Decrypt Command Flags */
 		decryptAlgorithmName  string // name of algorithm used for decryption
 		decryptPassword       string // password to be used for decryption
 		decryptForceOverwrite bool   // whether to automatically overwrite output file
@@ -42,15 +42,15 @@ func main() {
 		Use:   "cloak",
 		Short: "Cloak allows you to encrypt or decrypt files.",
 		Run: func(cmd *cobra.Command, args []string) {
-			// display program version and exit if version flag is present
-			if rootDisplayVersion {
-				utils.PrintVersion(appVersion)
-				os.Exit(0)
-			}
-
-			// display help and exit if no args were provided instead
+			// if no args are provided, display help and exit
 			if len(args) == 0 {
 				_ = cmd.Help()
+				os.Exit(1)
+			}
+
+			// if version flag is passed, display program version and exit
+			if rootDisplayVersion {
+				utils.PrintVersion(appVersion)
 				os.Exit(0)
 			}
 		},
@@ -64,7 +64,7 @@ func main() {
 	keygenCommand := &cobra.Command{
 		Use:   "keygen output",
 		Short: "Generate crypto keys",
-		Long:  "Generate a static cryptographic key that can be used to encrypt and decrypt files, and save it to a file.",
+		Long:  "Generate a static cryptographic key of fixed size that can be used to encrypt and decrypt files, and save it to a file.",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			// read args
@@ -91,14 +91,14 @@ func main() {
 			// open output file
 			outputFile, err := os.Create(outputFilePath)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error writing to output file \"%s\": %v\n", outputFilePath, err)
+				fmt.Fprintf(os.Stderr, "error creating output file: %v\n", err)
 				os.Exit(1)
 			}
 			defer outputFile.Close()
 
 			// write key to output file
 			if _, err := outputFile.Write(key); err != nil {
-				fmt.Fprintf(os.Stderr, "error writing key to output file: %v", err)
+				fmt.Fprintf(os.Stderr, "error writing to output file: %v", err)
 			}
 		},
 	}
