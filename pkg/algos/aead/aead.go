@@ -1,4 +1,4 @@
-package algos
+package aead
 
 import (
 	"crypto/aes"

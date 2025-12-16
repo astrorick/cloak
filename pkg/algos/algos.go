@@ -3,6 +3,8 @@ package algos
 import (
 	"io"
 	"slices"
+
+	"github.com/astrorick/cloak/pkg/algos/aead"
 )
 
 // CryptoAlgorithm is the interface that each implemented crypto algorithm must satisfy.
@@ -19,12 +21,12 @@ type CryptoAlgorithm interface {
 // ImplementedAlgos maps implemented algorithms to their internal name.
 var ImplementedAlgos = map[string]CryptoAlgorithm{
 	//* Advanced Encryption Standard (AES) Family */
-	"aesgcm128": NewAESGCM128(),
-	"aesgcm192": NewAESGCM192(),
-	"aesgcm256": NewAESGCM256(),
+	"aesgcm128": aead.NewAESGCM128(),
+	"aesgcm192": aead.NewAESGCM192(),
+	"aesgcm256": aead.NewAESGCM256(),
 
 	//* ChaCha20 Family */
-	"chacha20poly1305": NewChaCha20Poly1305(),
+	"chacha20poly1305": aead.NewChaCha20Poly1305(),
 }
 
 // DefaultAlgo represents the default crypto algorithm used when no flag is passed.

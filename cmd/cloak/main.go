@@ -118,7 +118,7 @@ func main() {
 			inputFilePath := args[0]
 			outputFilePath := args[1]
 
-			// check that input file exists
+			// check that the input file exists
 			inputFileExists, err := utils.FileExists(inputFilePath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "input path error: %v\n", err)
@@ -129,7 +129,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			// check that output file does not already exist, eventually asking the user if he wants to overwrite it
+			// check that the output file does not already exist, eventually asking the user if he wants to overwrite it
 			outputFileExists, err := utils.FileExists(outputFilePath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "output path error: %v\n", err)
@@ -140,12 +140,15 @@ func main() {
 				os.Exit(1)
 			}
 
-			// check crypto algorithm
+			// check chosen crypto algorithm
 			algo, ok := algos.ImplementedAlgos[encryptAlgorithmName]
 			if !ok {
 				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm \"%s\"\n", encryptAlgorithmName)
 				os.Exit(1)
 			}
+
+			// check for crypto key
+			// TODO
 
 			// check password
 			if encryptPassword == "" {
@@ -206,7 +209,7 @@ func main() {
 			inputFilePath := args[0]
 			outputFilePath := args[1]
 
-			// check that input file exists
+			// check that the input file exists
 			inputFileExists, err := utils.FileExists(inputFilePath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "input path error: %v\n", err)
@@ -217,23 +220,26 @@ func main() {
 				os.Exit(1)
 			}
 
-			// check that output file does not already exist, eventually asking the user if he wants to overwrite it
+			// check that the output file does not already exist, eventually asking the user if he wants to overwrite it
 			outputFileExists, err := utils.FileExists(outputFilePath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "output path error: %v\n", err)
 				os.Exit(1)
 			}
-			if outputFileExists && !decryptForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
+			if outputFileExists && !encryptForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
 				fmt.Fprintf(os.Stderr, "operation cancelled by user\n")
 				os.Exit(1)
 			}
 
-			// check crypto algorithm
+			// check chosen crypto algorithm
 			algo, ok := algos.ImplementedAlgos[decryptAlgorithmName]
 			if !ok {
 				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm \"%s\"\n", decryptAlgorithmName)
 				os.Exit(1)
 			}
+
+			// check for crypto key
+			// TODO
 
 			// check password
 			if decryptPassword == "" {
