@@ -2,6 +2,8 @@ package keygen
 
 import (
 	"crypto/rand"
+
+	"github.com/astrorick/cloak/pkg/keygen/methods"
 )
 
 // GenerateKey produces a randomly generated key of fixed size for file encryption/decryption.
@@ -25,8 +27,8 @@ type KeyDerMethod interface {
 
 // ImplementedMethods maps implemented methods to their internal name.
 var ImplementedMethods = map[string]KeyDerMethod{
-	"argon2": NewArgon2(),
-	"pbkdf2": NewPBKDF2(),
+	"argon2": methods.NewArgon2(),
+	"pbkdf2": methods.NewPBKDF2(),
 }
 
 // DefaultMethod represents the default key derivation function used when no flag is passed.

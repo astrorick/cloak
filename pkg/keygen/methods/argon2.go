@@ -1,4 +1,4 @@
-package keygen
+package methods
 
 import (
 	"golang.org/x/crypto/argon2"

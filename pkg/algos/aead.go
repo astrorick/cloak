@@ -18,8 +18,8 @@ type AEAD struct {
 	SaltSize  int
 	NonceSize int
 
-	Keygen    keygen.KeyDerMethod
-	NewCipher func(key []byte) (cipher.AEAD, error)
+	KeyDerMethod keygen.KeyDerMethod
+	NewCipher    func(key []byte) (cipher.AEAD, error)
 }
 
 //* AES Family with GCM Authentication */
@@ -32,7 +32,7 @@ func newAESGCM(keySizeBytes int) *AEAD {
 		SaltSize:  16,
 		NonceSize: 12,
 
-		Keygen: &keygen.Argon2{
+		KeyDerMethod: &keygen.Argon2{
 			Time:    8,
 			Memory:  128 * 1024,
 			Threads: 4,
@@ -76,7 +76,7 @@ func NewChaCha20Poly1305() *AEAD {
 		SaltSize:  16,
 		NonceSize: 12,
 
-		Keygen: &keygen.Argon2{
+		KeyDerMethod: &keygen.Argon2{
 			Time:    8,
 			Memory:  128 * 1024,
 			Threads: 4,
@@ -111,7 +111,7 @@ func (aead *AEAD) EncryptWithPsw(input io.Reader, output io.Writer, psw string) 
 	}
 
 	// derive encryption key from psw and salt
-	key, err := aead.Keygen.DeriveKey(psw, salt)
+	key, err := aead.KeyDerMethod.DeriveKey(psw, salt)
 	if err != nil {
 		return fmt.Errorf("error generating encryption key: %w", err)
 	}
@@ -159,7 +159,7 @@ func (aead *AEAD) DecryptWithPsw(input io.Reader, output io.Writer, psw string) 
 	}
 
 	// derive decryption key from psw and salt
-	key, err := aead.Keygen.DeriveKey(psw, salt)
+	key, err := aead.KeyDerMethod.DeriveKey(psw, salt)
 	if err != nil {
 		return fmt.Errorf("error generating decryption key: %w", err)
 	}

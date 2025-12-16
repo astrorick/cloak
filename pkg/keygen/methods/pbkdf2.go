@@ -1,4 +1,4 @@
-package keygen
+package methods
 
 import (
 	"crypto/pbkdf2"

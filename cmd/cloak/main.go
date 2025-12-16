@@ -25,14 +25,18 @@ func main() {
 		rootDisplayVersion bool // whether to display program version and exit
 
 		//* Encrypt Command Flags */
-		encryptAlgorithmName  string // name of algorithm used for encryption
+		encryptKeyFilePath    string // path to the cryptographic key (for key-based encryption)
 		encryptPassword       string // password to be used for encryption
+		encryptKeyDerMethod   string // key derivation method (for password-based encryption)
+		encryptAlgorithmName  string // name of algorithm used for encryption
 		encryptForceOverwrite bool   // whether to automatically overwrite output file
 		encryptRemoveOriginal bool   // whether to remove the source file after encryption
 
 		//* Decrypt Command Flags */
-		decryptAlgorithmName  string // name of algorithm used for decryption
+		decryptKeyFilePath    string // path to the cryptographic key (for key-based decryption)
 		decryptPassword       string // password to be used for decryption
+		decryptKeyDerMethod   string // key derivation method (for password-based decryption)
+		decryptAlgorithmName  string // name of algorithm used for decryption
 		decryptForceOverwrite bool   // whether to automatically overwrite output file
 		decryptRemoveOriginal bool   // whether to remove the source file after decryption
 	)
@@ -137,7 +141,7 @@ func main() {
 			}
 
 			// check crypto algorithm
-			algo, ok := algos.Implemented[encryptAlgorithmName]
+			algo, ok := algos.ImplementedAlgos[encryptAlgorithmName]
 			if !ok {
 				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm \"%s\"\n", encryptAlgorithmName)
 				os.Exit(1)
@@ -184,8 +188,10 @@ func main() {
 			}
 		},
 	}
-	encryptCommand.Flags().StringVarP(&encryptAlgorithmName, "algorithm", "a", algos.Default.Name(), "encryption algorithm")
+	encryptCommand.Flags().StringVarP(&encryptKeyFilePath, "key", "k", "cloak.key", "path to key file used for encryption")
 	encryptCommand.Flags().StringVarP(&encryptPassword, "password", "p", "", "password used for encryption")
+	encryptCommand.Flags().StringVarP(&encryptKeyDerMethod, "method", "m", keygen.DefaultMethod.Name(), "key derivation method")
+	encryptCommand.Flags().StringVarP(&encryptAlgorithmName, "algorithm", "a", algos.DefaultAlgo.Name(), "encryption algorithm")
 	encryptCommand.Flags().BoolVarP(&encryptForceOverwrite, "force", "f", false, "overwrite output file without asking")
 	encryptCommand.Flags().BoolVarP(&encryptRemoveOriginal, "replace", "r", false, "remove source file after encryption")
 
@@ -223,7 +229,7 @@ func main() {
 			}
 
 			// check crypto algorithm
-			algo, ok := algos.Implemented[decryptAlgorithmName]
+			algo, ok := algos.ImplementedAlgos[decryptAlgorithmName]
 			if !ok {
 				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm \"%s\"\n", decryptAlgorithmName)
 				os.Exit(1)
@@ -270,13 +276,15 @@ func main() {
 			}
 		},
 	}
-	decryptCommand.Flags().StringVarP(&decryptAlgorithmName, "algorithm", "a", algos.Default.Name(), "decryption algorithm")
+	decryptCommand.Flags().StringVarP(&decryptKeyFilePath, "key", "k", "cloak.key", "path to key file used for decryption")
 	decryptCommand.Flags().StringVarP(&decryptPassword, "password", "p", "", "password used for decryption")
+	encryptCommand.Flags().StringVarP(&decryptKeyDerMethod, "method", "m", keygen.DefaultMethod.Name(), "key derivation method")
+	decryptCommand.Flags().StringVarP(&decryptAlgorithmName, "algorithm", "a", algos.DefaultAlgo.Name(), "decryption algorithm")
 	decryptCommand.Flags().BoolVarP(&decryptForceOverwrite, "force", "f", false, "overwrite output file without asking")
 	decryptCommand.Flags().BoolVarP(&decryptRemoveOriginal, "replace", "r", false, "remove source file after decryption")
 
 	//* Display Algos Command */
-	displayAlgosCommand := &cobra.Command{
+	algosCommand := &cobra.Command{
 		Use:   "algos",
 		Short: "List implemented crypto algorithms",
 		Long:  "Display a list of implemented cryptographic algorithms for encryption and decryption.",
@@ -285,9 +293,9 @@ func main() {
 			fmt.Println("Implemented algorithms:")
 
 			for _, algoName := range algos.GetImplementedAlgoNames() {
-				algo := algos.Implemented[algoName]
+				algo := algos.ImplementedAlgos[algoName]
 				defaultMarker := ""
-				if algoName == algos.Default.Name() {
+				if algoName == algos.DefaultAlgo.Name() {
 					defaultMarker = " (default)"
 				}
 
@@ -297,7 +305,7 @@ func main() {
 	}
 
 	//* Display Version Command */
-	displayVersionCommand := &cobra.Command{
+	versionCommand := &cobra.Command{
 		Use:   "version",
 		Short: "Display program version",
 		Long:  "Display the current version of this program.",
@@ -308,7 +316,7 @@ func main() {
 	}
 
 	//* Run Root Command */
-	rootCommand.AddCommand(keygenCommand, encryptCommand, decryptCommand, displayAlgosCommand, displayVersionCommand)
+	rootCommand.AddCommand(keygenCommand, encryptCommand, decryptCommand, algosCommand, versionCommand)
 	if err := rootCommand.Execute(); err != nil {
 		log.Fatal(err)
 	}
