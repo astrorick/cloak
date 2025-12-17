@@ -117,11 +117,18 @@ func main() {
 		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			// read args
+			// read input and output file paths from args
 			inputFilePath := args[0]
 			outputFilePath := args[1]
 
-			// check that the input file exists
+			// check chosen crypto algorithm
+			algo, ok := algos.ImplementedAlgos[encryptAlgorithmName]
+			if !ok {
+				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm \"%s\"\n", encryptAlgorithmName)
+				os.Exit(1)
+			}
+
+			// check that the input file exists and open it
 			inputFileExists, err := utils.FileExists(inputFilePath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "input path error: %v\n", err)
@@ -131,8 +138,14 @@ func main() {
 				fmt.Fprintf(os.Stderr, "input file \"%s\" does not exist\n", inputFilePath)
 				os.Exit(1)
 			}
+			inputFile, err := os.Open(inputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error opening input file \"%s\": %v\n", inputFilePath, err)
+				os.Exit(1)
+			}
+			defer inputFile.Close()
 
-			// check that the output file does not already exist, eventually asking the user if he wants to overwrite it
+			// check that the output file does not already exist, eventually asking the user if he wants to overwrite it, and create it
 			outputFileExists, err := utils.FileExists(outputFilePath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "output path error: %v\n", err)
@@ -142,11 +155,17 @@ func main() {
 				fmt.Fprintf(os.Stderr, "operation cancelled by user\n")
 				os.Exit(1)
 			}
+			outputFile, err := os.Create(outputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error creating output file \"%s\": %v\n", outputFilePath, err)
+				os.Exit(1)
+			}
+			defer outputFile.Close()
 
-			// check chosen crypto algorithm
-			algo, ok := algos.ImplementedAlgos[encryptAlgorithmName]
-			if !ok {
-				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm \"%s\"\n", encryptAlgorithmName)
+			// read entire input file
+			plainBytes, err := io.ReadAll(inputFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error reading input file \"%s\": %v\n", inputFilePath, err)
 				os.Exit(1)
 			}
 
@@ -159,7 +178,7 @@ func main() {
 					os.Exit(1)
 				}
 
-				// check if the key file exists
+				// check if the key file exists and open it
 				keyFileExists, err := utils.FileExists(encryptKeyFilePath)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "key file path error: %v\n", err)
@@ -169,11 +188,17 @@ func main() {
 					fmt.Fprintf(os.Stderr, "key file \"%s\" does not exist\n", encryptKeyFilePath)
 					os.Exit(1)
 				}
-
-				// load key file
-				key, err = os.ReadFile(encryptKeyFilePath)
+				keyFile, err := os.Open(encryptKeyFilePath)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error reading key file: %v\n", err)
+					fmt.Fprintf(os.Stderr, "error opening key file \"%s\": %v\n", encryptKeyFilePath, err)
+					os.Exit(1)
+				}
+				defer keyFile.Close()
+
+				// read key file
+				key, err = io.ReadAll(keyFile)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error reading key file \"%s\": %v\n", encryptKeyFilePath, err)
 					os.Exit(1)
 				}
 
@@ -212,32 +237,9 @@ func main() {
 				// derive encryption key from user password and salt
 				key, err = method.DeriveKey(encryptPassword, salt)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error generating encryption key: %v\n", err)
+					fmt.Fprintf(os.Stderr, "error generating cryptographic key: %v\n", err)
 					os.Exit(1)
 				}
-			}
-
-			// open input file
-			inputFile, err := os.Open(inputFilePath)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error opening input file \"%s\": %v\n", inputFilePath, err)
-				os.Exit(1)
-			}
-			defer inputFile.Close()
-
-			// open output file
-			outputFile, err := os.Create(outputFilePath)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error writing to output file \"%s\": %v\n", outputFilePath, err)
-				os.Exit(1)
-			}
-			defer outputFile.Close()
-
-			// read entire input file
-			plainBytes, err := io.ReadAll(inputFile)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error reading input file \"%s\": %v\n", inputFilePath, err)
-				os.Exit(1)
 			}
 
 			// encrypt input file
@@ -247,15 +249,13 @@ func main() {
 				os.Exit(1)
 			}
 
-			// write (salt + nonce + ciphertext) or (nonce + ciphertext) to output file
-			if encryptKeyFilePath != "" {
-				// key-based encryption: write nonce + ciphertext
+			// write data to output file
+			if encryptKeyFilePath != "" { //* key-based encryption: write nonce + ciphertext
 				if _, err := outputFile.Write(cipherBytes); err != nil {
 					fmt.Fprintf(os.Stderr, "error writing encrypted data to output file: %v\n", err)
 					os.Exit(1)
 				}
-			} else {
-				// password-based encryption: write salt + nonce + ciphertext
+			} else { //* password-based encryption: write salt + nonce + ciphertext
 				if _, err := outputFile.Write(salt); err != nil {
 					fmt.Fprintf(os.Stderr, "error writing salt to output file: %v\n", err)
 					os.Exit(1)
@@ -289,11 +289,18 @@ func main() {
 		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			// read args
+			// read input and output file paths from args
 			inputFilePath := args[0]
 			outputFilePath := args[1]
 
-			// check that the input file exists
+			// check chosen crypto algorithm
+			algo, ok := algos.ImplementedAlgos[decryptAlgorithmName]
+			if !ok {
+				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm \"%s\"\n", decryptAlgorithmName)
+				os.Exit(1)
+			}
+
+			// check that the input file exists and open it
 			inputFileExists, err := utils.FileExists(inputFilePath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "input path error: %v\n", err)
@@ -303,8 +310,14 @@ func main() {
 				fmt.Fprintf(os.Stderr, "input file \"%s\" does not exist\n", inputFilePath)
 				os.Exit(1)
 			}
+			inputFile, err := os.Open(inputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error opening input file \"%s\": %v\n", inputFilePath, err)
+				os.Exit(1)
+			}
+			defer inputFile.Close()
 
-			// check that the output file does not already exist, eventually asking the user if he wants to overwrite it
+			// check that the output file does not already exist, eventually asking the user if he wants to overwrite it, and create it
 			outputFileExists, err := utils.FileExists(outputFilePath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "output path error: %v\n", err)
@@ -314,11 +327,17 @@ func main() {
 				fmt.Fprintf(os.Stderr, "operation cancelled by user\n")
 				os.Exit(1)
 			}
+			outputFile, err := os.Create(outputFilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error creating output file \"%s\": %v\n", outputFilePath, err)
+				os.Exit(1)
+			}
+			defer outputFile.Close()
 
-			// check chosen crypto algorithm
-			algo, ok := algos.ImplementedAlgos[decryptAlgorithmName]
-			if !ok {
-				fmt.Fprintf(os.Stderr, "unsupported crypto algorithm \"%s\"\n", decryptAlgorithmName)
+			// read entire input file
+			cipherBytes, err := io.ReadAll(inputFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error reading input file \"%s\": %v\n", inputFilePath, err)
 				os.Exit(1)
 			}
 
@@ -331,7 +350,7 @@ func main() {
 					os.Exit(1)
 				}
 
-				// check if the key file exists
+				// check if the key file exists and open it
 				keyFileExists, err := utils.FileExists(decryptKeyFilePath)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "key file path error: %v\n", err)
@@ -341,11 +360,17 @@ func main() {
 					fmt.Fprintf(os.Stderr, "key file \"%s\" does not exist\n", decryptKeyFilePath)
 					os.Exit(1)
 				}
-
-				// load key file
-				key, err = os.ReadFile(decryptKeyFilePath)
+				keyFile, err := os.Open(decryptKeyFilePath)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error reading key file: %v\n", err)
+					fmt.Fprintf(os.Stderr, "error opening key file \"%s\": %v\n", decryptKeyFilePath, err)
+					os.Exit(1)
+				}
+				defer keyFile.Close()
+
+				// read key file
+				key, err = io.ReadAll(keyFile)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error reading key file \"%s\": %v\n", decryptKeyFilePath, err)
 					os.Exit(1)
 				}
 
@@ -354,37 +379,7 @@ func main() {
 					fmt.Fprintf(os.Stderr, "invalid key file size (expected 64 bytes, got %d)\n", len(key))
 					os.Exit(1)
 				}
-			}
-
-			// open input file
-			inputFile, err := os.Open(inputFilePath)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error opening input file \"%s\": %v\n", inputFilePath, err)
-				os.Exit(1)
-			}
-			defer inputFile.Close()
-
-			// read entire input file
-			inputBytes, err := io.ReadAll(inputFile)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error reading input file \"%s\": %v\n", inputFilePath, err)
-				os.Exit(1)
-			}
-
-			// parse input based on encryption mode
-			var cipherBytes []byte
-			if decryptKeyFilePath != "" {
-				// key-based decryption: entire file is nonce + ciphertext
-				cipherBytes = inputBytes
-			} else {
-				// password-based decryption: first 16 bytes are salt, rest is nonce + ciphertext
-				if len(inputBytes) < 16 {
-					fmt.Fprintf(os.Stderr, "invalid encrypted file format (too short for password-based decryption)\n")
-					os.Exit(1)
-				}
-				salt = inputBytes[:16]
-				cipherBytes = inputBytes[16:]
-
+			} else { //* derive key from password
 				// check key derivation method
 				method, ok := keygen.ImplementedMethods[decryptMethodName]
 				if !ok {
@@ -392,40 +387,37 @@ func main() {
 					os.Exit(1)
 				}
 
-				// check password
-				if decryptPassword == "" {
-					decryptPassword = utils.RequestUserPassword()
-				} else {
+				// check if user provided a -p flag
+				if decryptPassword != "" {
+					// validate user-provided password (passed by -p flag)
 					if !utils.ValidatePassword(decryptPassword) {
 						fmt.Fprintf(os.Stderr, "invalid password\n")
 						os.Exit(1)
 					}
+				} else {
+					// request the user inputs its password from terminal
+					decryptPassword = utils.RequestUserPassword()
 				}
 
-				// derive decryption key from user password and salt
-				key, err = method.DeriveKey(decryptPassword, salt)
+				// read salt for key derivation from file
+				salt = cipherBytes[:16]
+
+				// derive encryption key from user password and salt
+				key, err = method.DeriveKey(encryptPassword, salt)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error generating decryption key: %v\n", err)
+					fmt.Fprintf(os.Stderr, "error generating cryptographic key: %v\n", err)
 					os.Exit(1)
 				}
 			}
 
-			// open output file
-			outputFile, err := os.Create(outputFilePath)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error writing to output file \"%s\": %v\n", outputFilePath, err)
-				os.Exit(1)
-			}
-			defer outputFile.Close()
-
 			// decrypt input file
-			plainBytes, err := algo.Decrypt(cipherBytes, key)
+			plainBytes, err := algo.Decrypt(cipherBytes[16:], key)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error decrypting input file: %v\n", err)
 				os.Exit(1)
 			}
 
-			// write decrypted data to output file
+			// write data to output file
 			if _, err := outputFile.Write(plainBytes); err != nil {
 				fmt.Fprintf(os.Stderr, "error writing decrypted data to output file: %v\n", err)
 				os.Exit(1)
