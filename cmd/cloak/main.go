@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -27,7 +29,7 @@ func main() {
 		//* Encrypt Command Flags */
 		encryptKeyFilePath    string // path to the cryptographic key (for key-based encryption)
 		encryptPassword       string // password to be used for encryption
-		encryptKeyDerMethod   string // key derivation method (for password-based encryption)
+		encryptMethodName     string // key derivation method (for password-based encryption)
 		encryptAlgorithmName  string // name of algorithm used for encryption
 		encryptForceOverwrite bool   // whether to automatically overwrite output file
 		encryptDeleteOriginal bool   // whether to delete the source file after encryption
@@ -35,7 +37,7 @@ func main() {
 		//* Decrypt Command Flags */
 		decryptKeyFilePath    string // path to the cryptographic key (for key-based decryption)
 		decryptPassword       string // password to be used for decryption
-		decryptKeyDerMethod   string // key derivation method (for password-based decryption)
+		decryptMethodName     string // key derivation method (for password-based decryption)
 		decryptAlgorithmName  string // name of algorithm used for decryption
 		decryptForceOverwrite bool   // whether to automatically overwrite output file
 		decryptDeleteOriginal bool   // whether to delete the source file after decryption
@@ -86,7 +88,7 @@ func main() {
 			}
 
 			// generate random cryptographic key
-			key, err := keygen.GenerateKey()
+			key, err := keygen.GenerateRandomKey()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error generating random key: %v\n", err)
 				os.Exit(1)
@@ -102,7 +104,8 @@ func main() {
 
 			// write key to output file
 			if _, err := outputFile.Write(key); err != nil {
-				fmt.Fprintf(os.Stderr, "error writing to output file: %v", err)
+				fmt.Fprintf(os.Stderr, "error writing to output file: %v\n", err)
+				os.Exit(1)
 			}
 		},
 	}
@@ -147,15 +150,69 @@ func main() {
 				os.Exit(1)
 			}
 
-			// check for crypto key
-			// TODO
+			// load cryptographic key OR derive one from the user-provided password
+			var salt, key []byte
+			if encryptKeyFilePath != "" { //* load (and validate) key file
+				// make sure the user did NOT specify both a key file and a password flag
+				if encryptPassword != "" {
+					fmt.Fprintf(os.Stderr, "flag -k can't be used with flag -p")
+					os.Exit(1)
+				}
 
-			// check password
-			if encryptPassword == "" {
-				encryptPassword = utils.RequestUserPassword()
-			} else {
-				if !utils.ValidatePassword(encryptPassword) {
-					fmt.Fprintf(os.Stderr, "invalid password\n")
+				// check if the key file exists
+				keyFileExists, err := utils.FileExists(encryptKeyFilePath)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "key file path error: %v\n", err)
+					os.Exit(1)
+				}
+				if !keyFileExists {
+					fmt.Fprintf(os.Stderr, "key file \"%s\" does not exist\n", encryptKeyFilePath)
+					os.Exit(1)
+				}
+
+				// load key file
+				key, err = os.ReadFile(encryptKeyFilePath)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error reading key file: %v\n", err)
+					os.Exit(1)
+				}
+
+				// check that the key length is consistent
+				if len(key) != 64 {
+					fmt.Fprintf(os.Stderr, "invalid key file size (expected 64 bytes, got %d)\n", len(key))
+					os.Exit(1)
+				}
+			} else { //* derive key from password
+				// check key derivation method
+				method, ok := keygen.ImplementedMethods[encryptMethodName]
+				if !ok {
+					fmt.Fprintf(os.Stderr, "unsupported key derivation method \"%s\"\n", encryptMethodName)
+					os.Exit(1)
+				}
+
+				// check if user provided a -p flag
+				if encryptPassword != "" {
+					// validate user-provided password (passed by -p flag)
+					if !utils.ValidatePassword(encryptPassword) {
+						fmt.Fprintf(os.Stderr, "invalid password\n")
+						os.Exit(1)
+					}
+				} else {
+					// request the user inputs its password from terminal
+					encryptPassword = utils.RequestUserPassword()
+				}
+
+				// generate random salt for key derivation
+				salt := make([]byte, 16)
+				if _, err := rand.Read(salt); err != nil {
+					fmt.Fprintf(os.Stderr, "error generating random salt: %v\n", err)
+					os.Exit(1)
+				}
+
+				// derive encryption key from user password and salt
+				key, err = method.DeriveKey(encryptPassword, salt)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error generating encryption key: %v\n", err)
 					os.Exit(1)
 				}
 			}
@@ -176,24 +233,51 @@ func main() {
 			}
 			defer outputFile.Close()
 
+			// read entire input file
+			plainBytes, err := io.ReadAll(inputFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error reading input file \"%s\": %v\n", inputFilePath, err)
+				os.Exit(1)
+			}
+
 			// encrypt input file
-			if err := algo.EncryptWithPsw(inputFile, outputFile, encryptPassword); err != nil {
+			cipherBytes, err := algo.Encrypt(plainBytes, key)
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "error encrypting input file: %v\n", err)
 				os.Exit(1)
+			}
+
+			// write (salt + nonce + ciphertext) or (nonce + ciphertext) to output file
+			if encryptKeyFilePath != "" {
+				// key-based encryption: write nonce + ciphertext
+				if _, err := outputFile.Write(cipherBytes); err != nil {
+					fmt.Fprintf(os.Stderr, "error writing encrypted data to output file: %v\n", err)
+					os.Exit(1)
+				}
+			} else {
+				// password-based encryption: write salt + nonce + ciphertext
+				if _, err := outputFile.Write(salt); err != nil {
+					fmt.Fprintf(os.Stderr, "error writing salt to output file: %v\n", err)
+					os.Exit(1)
+				}
+				if _, err := outputFile.Write(cipherBytes); err != nil {
+					fmt.Fprintf(os.Stderr, "error writing encrypted data to output file: %v\n", err)
+					os.Exit(1)
+				}
 			}
 
 			// delete original file if requested
 			if encryptDeleteOriginal {
 				if err := os.Remove(inputFilePath); err != nil {
-					fmt.Fprintf(os.Stderr, "error removing input file \"%s\": %v\n", inputFilePath, err)
+					fmt.Fprintf(os.Stderr, "error deleting input file \"%s\" after encryption: %v\n", inputFilePath, err)
 					os.Exit(1)
 				}
 			}
 		},
 	}
-	encryptCommand.Flags().StringVarP(&encryptKeyFilePath, "key", "k", "cloak.key", "path to key file used for encryption")
+	encryptCommand.Flags().StringVarP(&encryptKeyFilePath, "key", "k", "", "path to key file used for encryption")
 	encryptCommand.Flags().StringVarP(&encryptPassword, "password", "p", "", "password used for encryption")
-	encryptCommand.Flags().StringVarP(&encryptKeyDerMethod, "method", "m", keygen.DefaultMethod.Name(), "key derivation method")
+	encryptCommand.Flags().StringVarP(&encryptMethodName, "method", "m", keygen.DefaultMethod.Name(), "key derivation method")
 	encryptCommand.Flags().StringVarP(&encryptAlgorithmName, "algorithm", "a", algos.DefaultAlgo.Name(), "encryption algorithm")
 	encryptCommand.Flags().BoolVarP(&encryptForceOverwrite, "force", "f", false, "overwrite output file without asking")
 	encryptCommand.Flags().BoolVarP(&encryptDeleteOriginal, "delete", "d", false, "delete source file after encryption")
@@ -226,7 +310,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "output path error: %v\n", err)
 				os.Exit(1)
 			}
-			if outputFileExists && !encryptForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
+			if outputFileExists && !decryptForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
 				fmt.Fprintf(os.Stderr, "operation cancelled by user\n")
 				os.Exit(1)
 			}
@@ -238,15 +322,36 @@ func main() {
 				os.Exit(1)
 			}
 
-			// check for crypto key
-			// TODO
+			// load cryptographic key OR derive one from the user-provided password
+			var salt, key []byte
+			if decryptKeyFilePath != "" { //* load (and validate) key file
+				// make sure the user did NOT specify both a key file and a password flag
+				if decryptPassword != "" {
+					fmt.Fprintf(os.Stderr, "flag -k can't be used with flag -p")
+					os.Exit(1)
+				}
 
-			// check password
-			if decryptPassword == "" {
-				decryptPassword = utils.RequestUserPassword()
-			} else {
-				if !utils.ValidatePassword(decryptPassword) {
-					fmt.Fprintf(os.Stderr, "invalid password\n")
+				// check if the key file exists
+				keyFileExists, err := utils.FileExists(decryptKeyFilePath)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "key file path error: %v\n", err)
+					os.Exit(1)
+				}
+				if !keyFileExists {
+					fmt.Fprintf(os.Stderr, "key file \"%s\" does not exist\n", decryptKeyFilePath)
+					os.Exit(1)
+				}
+
+				// load key file
+				key, err = os.ReadFile(decryptKeyFilePath)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error reading key file: %v\n", err)
+					os.Exit(1)
+				}
+
+				// check that the key length is consistent
+				if len(key) != 64 {
+					fmt.Fprintf(os.Stderr, "invalid key file size (expected 64 bytes, got %d)\n", len(key))
 					os.Exit(1)
 				}
 			}
@@ -259,6 +364,52 @@ func main() {
 			}
 			defer inputFile.Close()
 
+			// read entire input file
+			inputBytes, err := io.ReadAll(inputFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error reading input file \"%s\": %v\n", inputFilePath, err)
+				os.Exit(1)
+			}
+
+			// parse input based on encryption mode
+			var cipherBytes []byte
+			if decryptKeyFilePath != "" {
+				// key-based decryption: entire file is nonce + ciphertext
+				cipherBytes = inputBytes
+			} else {
+				// password-based decryption: first 16 bytes are salt, rest is nonce + ciphertext
+				if len(inputBytes) < 16 {
+					fmt.Fprintf(os.Stderr, "invalid encrypted file format (too short for password-based decryption)\n")
+					os.Exit(1)
+				}
+				salt = inputBytes[:16]
+				cipherBytes = inputBytes[16:]
+
+				// check key derivation method
+				method, ok := keygen.ImplementedMethods[decryptMethodName]
+				if !ok {
+					fmt.Fprintf(os.Stderr, "unsupported key derivation method \"%s\"\n", decryptMethodName)
+					os.Exit(1)
+				}
+
+				// check password
+				if decryptPassword == "" {
+					decryptPassword = utils.RequestUserPassword()
+				} else {
+					if !utils.ValidatePassword(decryptPassword) {
+						fmt.Fprintf(os.Stderr, "invalid password\n")
+						os.Exit(1)
+					}
+				}
+
+				// derive decryption key from user password and salt
+				key, err = method.DeriveKey(decryptPassword, salt)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error generating decryption key: %v\n", err)
+					os.Exit(1)
+				}
+			}
+
 			// open output file
 			outputFile, err := os.Create(outputFilePath)
 			if err != nil {
@@ -268,23 +419,30 @@ func main() {
 			defer outputFile.Close()
 
 			// decrypt input file
-			if err := algo.DecryptWithPsw(inputFile, outputFile, decryptPassword); err != nil {
+			plainBytes, err := algo.Decrypt(cipherBytes, key)
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "error decrypting input file: %v\n", err)
+				os.Exit(1)
+			}
+
+			// write decrypted data to output file
+			if _, err := outputFile.Write(plainBytes); err != nil {
+				fmt.Fprintf(os.Stderr, "error writing decrypted data to output file: %v\n", err)
 				os.Exit(1)
 			}
 
 			// delete original file if requested
 			if decryptDeleteOriginal {
 				if err := os.Remove(inputFilePath); err != nil {
-					fmt.Fprintf(os.Stderr, "error removing input file \"%s\": %v\n", inputFilePath, err)
+					fmt.Fprintf(os.Stderr, "error deleting input file \"%s\" after decryption: %v\n", inputFilePath, err)
 					os.Exit(1)
 				}
 			}
 		},
 	}
-	decryptCommand.Flags().StringVarP(&decryptKeyFilePath, "key", "k", "cloak.key", "path to key file used for decryption")
+	decryptCommand.Flags().StringVarP(&decryptKeyFilePath, "key", "k", "", "path to key file used for decryption")
 	decryptCommand.Flags().StringVarP(&decryptPassword, "password", "p", "", "password used for decryption")
-	encryptCommand.Flags().StringVarP(&decryptKeyDerMethod, "method", "m", keygen.DefaultMethod.Name(), "key derivation method")
+	decryptCommand.Flags().StringVarP(&decryptMethodName, "method", "m", keygen.DefaultMethod.Name(), "key derivation method")
 	decryptCommand.Flags().StringVarP(&decryptAlgorithmName, "algorithm", "a", algos.DefaultAlgo.Name(), "decryption algorithm")
 	decryptCommand.Flags().BoolVarP(&decryptForceOverwrite, "force", "f", false, "overwrite output file without asking")
 	decryptCommand.Flags().BoolVarP(&decryptDeleteOriginal, "delete", "d", false, "delete source file after decryption")

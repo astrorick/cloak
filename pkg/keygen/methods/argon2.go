@@ -19,7 +19,7 @@ func NewArgon2() *Argon2 {
 		NameStr: "argon2",
 		DescStr: "argon2 key derivation function",
 
-		Time:    1,
+		Time:    8,
 		Memory:  64 * 1024,
 		Threads: 1,
 		KeySize: 64,

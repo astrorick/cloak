@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/astrorick/cloak/pkg/keygen"
+	"github.com/astrorick/cloak/pkg/keygen/methods"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -32,7 +33,7 @@ func newAESGCM(keySizeBytes int) *AEAD {
 		SaltSize:  16,
 		NonceSize: 12,
 
-		KeyDerMethod: &keygen.Argon2{
+		KeyDerMethod: &methods.Argon2{
 			Time:    8,
 			Memory:  128 * 1024,
 			Threads: 4,
@@ -76,7 +77,7 @@ func NewChaCha20Poly1305() *AEAD {
 		SaltSize:  16,
 		NonceSize: 12,
 
-		KeyDerMethod: &keygen.Argon2{
+		KeyDerMethod: &methods.Argon2{
 			Time:    8,
 			Memory:  128 * 1024,
 			Threads: 4,

@@ -6,8 +6,8 @@ import (
 	"github.com/astrorick/cloak/pkg/keygen/methods"
 )
 
-// GenerateKey produces a randomly generated key of fixed size for file encryption/decryption.
-func GenerateKey() ([]byte, error) {
+// GenerateRandomKey produces a randomly generated key of fixed size for file encryption/decryption.
+func GenerateRandomKey() ([]byte, error) {
 	// make a completely random 64 byte key (no password needed here)
 	key := make([]byte, 64)
 	if _, err := rand.Read(key); err != nil {

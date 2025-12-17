@@ -1,7 +1,6 @@
 package algos
 
 import (
-	"io"
 	"slices"
 
 	"github.com/astrorick/cloak/pkg/algos/aead"
@@ -12,10 +11,8 @@ type CryptoAlgorithm interface {
 	Name() string        // name of the algorithm
 	Description() string // algorithm description
 
-	// EncryptWithKey(input io.Reader, output io.Writer, key []byte) error // encrypt using the crypto key provided by the user
-	// DecryptWithKey(input io.Reader, output io.Writer, key []byte) error // decrypt using the crypto key provided by the user
-	EncryptWithPsw(input io.Reader, output io.Writer, psw string) error // encrypt using the password provided by the user
-	DecryptWithPsw(input io.Reader, output io.Writer, psw string) error // decrypt using the password provided by the user
+	Encrypt(plainBytes []byte, key []byte) ([]byte, error)  // encrypt using key
+	Decrypt(cipherBytes []byte, key []byte) ([]byte, error) // decrypt using key
 }
 
 // ImplementedAlgos maps implemented algorithms to their internal name.
