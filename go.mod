@@ -1,6 +1,6 @@
 module github.com/astrorick/cloak
 
-go 1.25.1
+go 1.25.5
 
 require (
 	github.com/astrorick/semantika v0.2.0
