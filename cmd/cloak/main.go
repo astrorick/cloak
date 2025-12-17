@@ -400,10 +400,14 @@ func main() {
 				}
 
 				// read salt for key derivation from file
+				if len(cipherBytes) < 16 {
+					fmt.Fprintf(os.Stderr, "invalid encrypted file format (too short for password-based decryption)\n")
+					os.Exit(1)
+				}
 				salt = cipherBytes[:16]
 
-				// derive encryption key from user password and salt
-				key, err = method.DeriveKey(encryptPassword, salt)
+				// derive decryption key from user password and salt
+				key, err = method.DeriveKey(decryptPassword, salt)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "error generating cryptographic key: %v\n", err)
 					os.Exit(1)
@@ -411,7 +415,14 @@ func main() {
 			}
 
 			// decrypt input file
-			plainBytes, err := algo.Decrypt(cipherBytes[16:], key)
+			var plainBytes []byte
+			if decryptKeyFilePath != "" {
+				// key-based decryption: decrypt nonce + ciphertext
+				plainBytes, err = algo.Decrypt(cipherBytes, key)
+			} else {
+				// password-based decryption: decrypt nonce + ciphertext (after salt)
+				plainBytes, err = algo.Decrypt(cipherBytes[16:], key)
+			}
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error decrypting input file: %v\n", err)
 				os.Exit(1)
