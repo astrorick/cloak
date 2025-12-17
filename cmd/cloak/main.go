@@ -30,7 +30,7 @@ func main() {
 		encryptKeyDerMethod   string // key derivation method (for password-based encryption)
 		encryptAlgorithmName  string // name of algorithm used for encryption
 		encryptForceOverwrite bool   // whether to automatically overwrite output file
-		encryptRemoveOriginal bool   // whether to remove the source file after encryption
+		encryptDeleteOriginal bool   // whether to delete the source file after encryption
 
 		//* Decrypt Command Flags */
 		decryptKeyFilePath    string // path to the cryptographic key (for key-based decryption)
@@ -38,7 +38,7 @@ func main() {
 		decryptKeyDerMethod   string // key derivation method (for password-based decryption)
 		decryptAlgorithmName  string // name of algorithm used for decryption
 		decryptForceOverwrite bool   // whether to automatically overwrite output file
-		decryptRemoveOriginal bool   // whether to remove the source file after decryption
+		decryptDeleteOriginal bool   // whether to delete the source file after decryption
 	)
 
 	//* Root Command */
@@ -182,8 +182,8 @@ func main() {
 				os.Exit(1)
 			}
 
-			// remove original file if requested
-			if encryptRemoveOriginal {
+			// delete original file if requested
+			if encryptDeleteOriginal {
 				if err := os.Remove(inputFilePath); err != nil {
 					fmt.Fprintf(os.Stderr, "error removing input file \"%s\": %v\n", inputFilePath, err)
 					os.Exit(1)
@@ -196,7 +196,7 @@ func main() {
 	encryptCommand.Flags().StringVarP(&encryptKeyDerMethod, "method", "m", keygen.DefaultMethod.Name(), "key derivation method")
 	encryptCommand.Flags().StringVarP(&encryptAlgorithmName, "algorithm", "a", algos.DefaultAlgo.Name(), "encryption algorithm")
 	encryptCommand.Flags().BoolVarP(&encryptForceOverwrite, "force", "f", false, "overwrite output file without asking")
-	encryptCommand.Flags().BoolVarP(&encryptRemoveOriginal, "replace", "r", false, "remove source file after encryption")
+	encryptCommand.Flags().BoolVarP(&encryptDeleteOriginal, "delete", "d", false, "delete source file after encryption")
 
 	//* Decrypt Command */
 	decryptCommand := &cobra.Command{
@@ -273,8 +273,8 @@ func main() {
 				os.Exit(1)
 			}
 
-			// remove original file if requested
-			if decryptRemoveOriginal {
+			// delete original file if requested
+			if decryptDeleteOriginal {
 				if err := os.Remove(inputFilePath); err != nil {
 					fmt.Fprintf(os.Stderr, "error removing input file \"%s\": %v\n", inputFilePath, err)
 					os.Exit(1)
@@ -287,7 +287,7 @@ func main() {
 	encryptCommand.Flags().StringVarP(&decryptKeyDerMethod, "method", "m", keygen.DefaultMethod.Name(), "key derivation method")
 	decryptCommand.Flags().StringVarP(&decryptAlgorithmName, "algorithm", "a", algos.DefaultAlgo.Name(), "decryption algorithm")
 	decryptCommand.Flags().BoolVarP(&decryptForceOverwrite, "force", "f", false, "overwrite output file without asking")
-	decryptCommand.Flags().BoolVarP(&decryptRemoveOriginal, "replace", "r", false, "remove source file after decryption")
+	decryptCommand.Flags().BoolVarP(&decryptDeleteOriginal, "delete", "d", false, "delete source file after decryption")
 
 	//* Display Algos Command */
 	algosCommand := &cobra.Command{
