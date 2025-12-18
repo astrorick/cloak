@@ -12,33 +12,28 @@ _Cloak_ is a minimal CLI tool for encrypting and decrypting files.
 
 Here's a list of currently available features:
 
-- Simple file encryption and decryption
-- Supports multiple state-of-the-art cryptography algorithms
-- Lightweight and easy to use
-
-## Work In Progress
-
-Here's a list of planned features I'm currently working on:
-
-- [ ] Implement the Ascon cryptography algorithm
-- [ ] Abstract encryption and decryption common command logic in source code
-- [ ] Add a skip password confirmation flag (for script usage)
-- [ ] Add flag to directly inject password (for script usage)
+- Simple file encryption and decryption (password-based or key-based).
+- Supports AES-GCM (aesgcm128, aesgcm192, aesgcm256) and ChaCha20-Poly1305 crypto algorithms.
+- Password-based key derivation with **Argon2** and **PBKDF2** (configurable via `-m`/`--method`).
+- Generate and use static 64-byte cryptographic keys with `keygen` and `-k`/`--key`.
+- Non-interactive operation: inject password with `-p`/`--password` or use a key file with `-k`/`--key`.
+- Overwrite control (`-f`/`--force`) and optional source deletion after operation (`-d`/`--delete`).
+- Commands to list implemented algorithms (`algos`) and key-derivation methods (`methods`).
 
 ## Quick Start
 
-The `AES256` algorithm will be selected by default when not explicitly specified by the `-x` flag.
+Defaults: **algorithm** = `aesgcm256` (displayed as "aes256" in docs) and **key-derivation** = `argon2`.
 
-**Encryption**
-
-```
-cloak enc source_file encrypted_file
-```
-
-**Decryption**
+**Encryption (interactive)**:
 
 ```
-cloak dec encrypted_file output_file
+cloak enc source.txt cipher.clk
+```
+
+**Decryption (interactive)**:
+
+```
+cloak dec cipher.clk plain.txt
 ```
 
 **Help**
@@ -54,53 +49,72 @@ cloak [command] [flags]
 ```
 
 **Available Commands:**
-- `enc`: encrypt the input file into the output file using the optionally specified algorithm (defaults to `aes256`)
 
-  ```
-  cloak enc input_file output_file [flags]
-  ```
+- `keygen output`: Generate a random 64-byte cryptographic key and write it to `output` (will automatically fail if `output` already exists).
 
-  **Available Flags:**
-  - `-h` or `--help`: display the encryption help message
-  - `-x` or `--algorithm`: specify the encryption algorithm (`aes128`, `aes192`, `aes256` or `chacha20poly1305`)
-  - `-f` of `--force`: forcefully overwrite the output file without asking
-  - `-r` or `--replace`: remove input file after encryption
+- `enc input_file output_file`: Encrypt the input file and write the resulting ciphertext to the output file. Either a password (interactive or `-p`) or a key file (`-k`) can be used.
 
-- `dec`: decrypt the input file into the output file using the optionally specified algorithm (defaults to `aes256`)
+  Flags:
+  - `-h`, `--help`: show help for any command.
+  - `-a`, `--algorithm`: encryption algorithm (one of `aesgcm128`, `aesgcm192`, `aesgcm256`, `chacha20poly1305`; default: `aesgcm256`).
+  - `-k`, `--key`: path to a 64-byte key file for key-based encryption (mutually exclusive with `-p`).
+  - `-p`, `--password`: provide password non-interactively (mutually exclusive with `-k`, must be >= 8 chars, printable ASCII).
+  - `-m`, `--method`: key-derivation method for password-based encryption (one of `argon2`, `pbkdf2`; default: `argon2`).
+  - `-f`, `--force`: overwrite the output file without prompting.
+  - `-d`, `--delete`: delete source file after successful operation.
 
-  ```
-  cloak dec input_file output_file [flags]
-  ```
+- `dec input_file output_file`: Decrypt the input file and write the resulting plaintext to the output file. Either a password (interactive or `-p`) or a key file (`-k`) can be used.
 
-  **Available Flags:**
-  - `-h` or `--help`: display the decryption help message
-  - `-x` or `--algorithm`: specify the decryption algorithm (`aes128`, `aes192`, `aes256` or `chacha20poly1305`)
-  - `-f` of `--force`: forcefully overwrite the output file without asking
-  - `-r` or `--replace`: remove input file after encryption
+  Flags:
+  - `-h`, `--help`: show help for any command.
+  - `-a`, `--algorithm`: decryption algorithm (one of `aesgcm128`, `aesgcm192`, `aesgcm256`, `chacha20poly1305`; default: `aesgcm256`).
+  - `-k`, `--key`: path to a 64-byte key file for key-based decryption (mutually exclusive with `-p`).
+  - `-p`, `--password`: provide password non-interactively (mutually exclusive with `-k`, must be >= 8 chars, printable ASCII).
+  - `-m`, `--method`: key-derivation method for password-based decryption (one of `argon2`, `pbkdf2`; default: `argon2`).
+  - `-f`, `--force`: overwrite the output file without prompting.
+  - `-d`, `--delete`: delete source file after successful operation.
 
-- `algos`: print a list of currently implemented algorithms
+- `algos`: List implemented cryptographic algorithms.
 
-- `version`: print current program version (equivalent to the `-v` and `--version` flags)
+- `methods`: List implemented key-derivation methods.
 
-- `help`: display the general help message (equivalent to the `-h` and `--help` flags)
+- `version`: Print the program version.
 
-**Available Flags:**
-- `-v` or `--version`: print current program version (equivalent to the `version` command)
-- `-h` or `--help`: display the general help message (equivalent to the `help` command)
+> [!NOTE]
+> Password-based encryption and key-based encryption are not compatible with each other. Files ancrypted with one of these modes must be decrypted with the same mode.
 
 ## Usage Examples
 
-1. Encrypt `my_plaintext_file.txt` using the `chacha20poly1305` algorithm. Write the result to `my_encrypted_file.clk` and _remove_ the source file if successful:
+Interactive encryption using default algorithm and key derivation method, prompts for password:
 
-   ```
-   cloak enc my_plaintext_file.txt my_encrypted_file.clk -x chacha20poly1305 -r
-   ```
+```
+cloak enc source.txt cipher.clk
+```
 
-2. Decrypt `secret.clk` using the `aes192` algorithm. Write the result to `selfie.jpg` but _keep_ the source file:
+---
 
-   ```
-   cloak dec secret.clk selfie.jpg -x aes192
-   ```
+Non-interactive encryption with injected password and custom algorithm/method, force overwrite and delete source:
+
+```
+cloak enc source.txt cipher.clk -p my_strong_password -a chacha20poly1305 -m pbkdf2 -f -d
+```
+
+---
+
+Non-interactive decryption with injected password using default algorithm and key derivation method:
+
+```
+cloak dec cipher.clk plain.txt -p my_strong_password
+```
+
+---
+
+Key-based encryption using a static cryptographic key file:
+
+```
+cloak keygen mykey.bin
+cloak enc source.txt cipher.clk -k mykey.bin
+```
 
 ## Contributing
 
