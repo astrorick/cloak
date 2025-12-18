@@ -13,7 +13,8 @@ type ChaCha20Poly1305 struct {
 	NameStr string
 	DescStr string
 
-	NewCipher func(key []byte) (cipher.AEAD, error)
+	KeySizeBytes int
+	NewCipher    func(key []byte) (cipher.AEAD, error)
 }
 
 // NewChaCha20Poly1305 initializes a new ChaCha20Poly1305 instance
@@ -22,6 +23,7 @@ func NewChaCha20Poly1305() *ChaCha20Poly1305 {
 		NameStr: "chacha20poly1305",
 		DescStr: "symmetric ChaCha20 with Poly1305 authentication",
 
+		KeySizeBytes: 32,
 		NewCipher: func(key []byte) (cipher.AEAD, error) {
 			aeadCipher, err := chacha20poly1305.New(key)
 			if err != nil {
@@ -45,7 +47,7 @@ func (aead *ChaCha20Poly1305) Description() string {
 
 func (aead *ChaCha20Poly1305) Encrypt(plainBytes []byte, key []byte) ([]byte, error) {
 	// get cipher from key
-	aeadCipher, err := aead.NewCipher(key)
+	aeadCipher, err := aead.NewCipher(key[:aead.KeySizeBytes])
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +64,7 @@ func (aead *ChaCha20Poly1305) Encrypt(plainBytes []byte, key []byte) ([]byte, er
 
 func (aead *ChaCha20Poly1305) Decrypt(cipherBytes []byte, key []byte) ([]byte, error) {
 	// get cipher from key
-	aeadCipher, err := aead.NewCipher(key)
+	aeadCipher, err := aead.NewCipher(key[:aead.KeySizeBytes])
 	if err != nil {
 		return nil, err
 	}

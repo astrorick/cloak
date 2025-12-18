@@ -1,1 +1,0 @@
-My source code text file to test encryption/decryption.

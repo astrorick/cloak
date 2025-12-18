@@ -13,7 +13,8 @@ type AESGCM struct {
 	NameStr string
 	DescStr string
 
-	NewCipher func(key []byte) (cipher.AEAD, error)
+	KeySizeBytes int
+	NewCipher    func(key []byte) (cipher.AEAD, error)
 }
 
 // newAESGCM initializes a new AESGCM instance with the provided key
@@ -22,6 +23,7 @@ func newAESGCM(keySizeBytes int) *AESGCM {
 		NameStr: fmt.Sprintf("aesgcm%d", keySizeBytes*8),
 		DescStr: fmt.Sprintf("symmetric AES with GCM authentication (%d-bit)", keySizeBytes*8),
 
+		KeySizeBytes: keySizeBytes,
 		NewCipher: func(key []byte) (cipher.AEAD, error) {
 			cipherBlock, err := aes.NewCipher(key)
 			if err != nil {
@@ -62,7 +64,7 @@ func (aead *AESGCM) Description() string {
 
 func (aead *AESGCM) Encrypt(plainBytes []byte, key []byte) ([]byte, error) {
 	// get cipher from key
-	aeadCipher, err := aead.NewCipher(key)
+	aeadCipher, err := aead.NewCipher(key[:aead.KeySizeBytes])
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +81,7 @@ func (aead *AESGCM) Encrypt(plainBytes []byte, key []byte) ([]byte, error) {
 
 func (aead *AESGCM) Decrypt(cipherBytes []byte, key []byte) ([]byte, error) {
 	// get cipher from key
-	aeadCipher, err := aead.NewCipher(key)
+	aeadCipher, err := aead.NewCipher(key[:aead.KeySizeBytes])
 	if err != nil {
 		return nil, err
 	}

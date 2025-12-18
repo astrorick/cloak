@@ -17,7 +17,7 @@ type Argon2 struct {
 func NewArgon2() *Argon2 {
 	return &Argon2{
 		NameStr: "argon2",
-		DescStr: "Argon2 key derivation function.",
+		DescStr: "argon2 key derivation function",
 
 		Time:    8,
 		Memory:  64 * 1024,

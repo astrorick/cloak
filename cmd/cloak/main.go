@@ -174,7 +174,7 @@ func main() {
 			if encryptKeyFilePath != "" { //* load (and validate) key file
 				// make sure the user did NOT specify both a key file and a password flag
 				if encryptPassword != "" {
-					fmt.Fprintf(os.Stderr, "flag -k can't be used with flag -p")
+					fmt.Fprintf(os.Stderr, "flag error: flag -k can't be used with flag -p")
 					os.Exit(1)
 				}
 
@@ -228,7 +228,7 @@ func main() {
 				}
 
 				// generate random salt for key derivation
-				salt := make([]byte, 16)
+				salt = make([]byte, 16)
 				if _, err := rand.Read(salt); err != nil {
 					fmt.Fprintf(os.Stderr, "error generating random salt: %v\n", err)
 					os.Exit(1)
@@ -346,7 +346,7 @@ func main() {
 			if decryptKeyFilePath != "" { //* load (and validate) key file
 				// make sure the user did NOT specify both a key file and a password flag
 				if decryptPassword != "" {
-					fmt.Fprintf(os.Stderr, "flag -k can't be used with flag -p")
+					fmt.Fprintf(os.Stderr, "flag error: flag -k can't be used with flag -p")
 					os.Exit(1)
 				}
 
