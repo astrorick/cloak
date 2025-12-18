@@ -2,6 +2,7 @@ package keygen
 
 import (
 	"crypto/rand"
+	"slices"
 
 	"github.com/astrorick/cloak/pkg/keygen/methods"
 )
@@ -33,3 +34,15 @@ var ImplementedMethods = map[string]KeyDerMethod{
 
 // DefaultMethod represents the default key derivation function used when no flag is passed.
 var DefaultMethod = ImplementedMethods["argon2"]
+
+// GetImplementedMethodNames returns a strings slice with the names of implemented key derivation methods.
+func GetImplementedMethodNames() []string {
+	methodNames := make([]string, 0, len(ImplementedMethods))
+	for methodName := range ImplementedMethods {
+		methodNames = append(methodNames, methodName)
+	}
+
+	slices.Sort(methodNames)
+
+	return methodNames
+}

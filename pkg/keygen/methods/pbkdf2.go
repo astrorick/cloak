@@ -18,7 +18,7 @@ type PBKDF2 struct {
 func NewPBKDF2() *PBKDF2 {
 	return &PBKDF2{
 		NameStr: "pbkdf2",
-		DescStr: "password-based key derivation function 2",
+		DescStr: "Password-based key derivation function 2.",
 
 		Hash:    sha512.New,
 		Iter:    100_000,

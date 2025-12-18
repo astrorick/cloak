@@ -46,18 +46,18 @@ func main() {
 	//* Root Command */
 	rootCommand := &cobra.Command{
 		Use:   "cloak",
-		Short: "Cloak allows you to encrypt or decrypt files.",
+		Short: "Cloak allows you to encrypt and decrypt files using a cryptographic key or a password.",
 		Run: func(cmd *cobra.Command, args []string) {
-			// if no args are provided, display help and exit
-			if len(args) == 0 {
-				_ = cmd.Help()
-				os.Exit(1)
-			}
-
 			// if version flag is passed, display program version and exit
 			if rootDisplayVersion {
 				utils.PrintVersion(appVersion)
 				os.Exit(0)
+			}
+
+			// if no args are provided, display help and exit
+			if len(args) == 0 {
+				_ = cmd.Help()
+				os.Exit(1)
 			}
 		},
 		CompletionOptions: cobra.CompletionOptions{
@@ -70,7 +70,7 @@ func main() {
 	keygenCommand := &cobra.Command{
 		Use:   "keygen output",
 		Short: "Generate crypto keys",
-		Long:  "Generate a static cryptographic key of fixed size that can be used to encrypt and decrypt files, and save it to a file.",
+		Long:  "Generate a static cryptographic key of fixed size that can be used to encrypt and decrypt files, and save it to the specified location.",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			// read args
@@ -114,7 +114,7 @@ func main() {
 	encryptCommand := &cobra.Command{
 		Use:   "enc input output",
 		Short: "Encrypt files",
-		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
+		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. Either a cryptographic key file or a password can be used for encryption. If the optional -d flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			// read input and output file paths from args
@@ -286,7 +286,7 @@ func main() {
 	decryptCommand := &cobra.Command{
 		Use:   "dec input output",
 		Short: "Decrypt files",
-		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. If the optional -r flag is passed, the source file is then deleted.",
+		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. Either a cryptographic key file or a password can be used for decryption. If the optional -d flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			// read input and output file paths from args
@@ -453,8 +453,8 @@ func main() {
 	//* Display Algos Command */
 	algosCommand := &cobra.Command{
 		Use:   "algos",
-		Short: "List implemented crypto algorithms",
-		Long:  "Display a list of implemented cryptographic algorithms for encryption and decryption.",
+		Short: "List crypto algorithms",
+		Long:  "Display the list of available cryptographic algorithms for encryption and decryption.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println("Implemented algorithms:")
@@ -471,6 +471,27 @@ func main() {
 		},
 	}
 
+	//* DIsplay Methods Command */
+	methodsCommand := &cobra.Command{
+		Use:   "methods",
+		Short: "List key derivation methods",
+		Long:  "Display the list of available methods for key derivation.",
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Implemented methods:")
+
+			for _, methodName := range keygen.GetImplementedMethodNames() {
+				method := keygen.ImplementedMethods[methodName]
+				defaultMarker := ""
+				if methodName == keygen.DefaultMethod.Name() {
+					defaultMarker = " (default)"
+				}
+
+				fmt.Printf(" - %s: %s%s\n", methodName, method.Description(), defaultMarker)
+			}
+		},
+	}
+
 	//* Display Version Command */
 	versionCommand := &cobra.Command{
 		Use:   "version",
@@ -483,7 +504,7 @@ func main() {
 	}
 
 	//* Run Root Command */
-	rootCommand.AddCommand(keygenCommand, encryptCommand, decryptCommand, algosCommand, versionCommand)
+	rootCommand.AddCommand(keygenCommand, encryptCommand, decryptCommand, algosCommand, methodsCommand, versionCommand)
 	if err := rootCommand.Execute(); err != nil {
 		log.Fatal(err)
 	}
