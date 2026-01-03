@@ -54,21 +54,21 @@ cloak <command> [args] [flags]
 
 **Main Commands:**
 
-- `keygen`: Generates a random 64-byte cryptographic key and writes it to the file provided as the `output` argument (will automatically fail if the destination file already exists).
+- `keygen`: generates a random 64-byte cryptographic key and writes it to the file provided as the `output` argument (will automatically fail if the destination file already exists).
 
   **Args**:
-  - `output`: Output file path for saving the newly generated cryptographic key.
+  - `output`: output file path for saving the newly generated cryptographic key.
 
   **Flags**:
   - `-h`, `--help`: show help for this command.
 
 ---
 
-- `enc`: Encrypts the input file and writes the resulting ciphertext to the output file. Either a user-provided password or a key file can be used for encryption.
+- `enc`: encrypts the input file and writes the resulting ciphertext to the output file. Either a user-provided password or a key file can be used for encryption.
 
   **Args**:
-  - `input_file`: The source file to be encrypted. Will fail if this file does not exist.
-  - `output_file`: The destination for saving the ciphertext. Will ask for permission to overwrite if the output file already exists and the optional `-f` flag was _not_ passed.
+  - `input_file`: source file to be encrypted (will fail if this file does not exist).
+  - `output_file`: destination for saving the ciphertext (will ask for permission to overwrite if the output file already exists and the optional `-f` flag was _not_ passed).
 
   **Flags**:
   - `-a`, `--algorithm`: encryption algorithm (must be one of `aesgcm128`, `aesgcm192`, `aesgcm256`, `chacha20poly1305`; defaults to `aesgcm256` if unspecified).
@@ -81,11 +81,11 @@ cloak <command> [args] [flags]
 
 ---
 
-- `dec`: Decrypts the input file and writes the resulting plaintext to the output file. Either a password (interactive or `-p`) or a key file (`-k`) can be used for decryption.
+- `dec`: decrypts the input file and writes the resulting plaintext to the output file. Either a password (interactive or `-p`) or a key file (`-k`) can be used for decryption.
 
   **Args**:
-  - `input_file`: The source file to be decrypted. Will fail if this file does not exist.
-  - `output_file`: The destination for saving the plaintext. Will ask for permission to overwrite if the output file already exists and the optional `-f` flag was _not_ passed.
+  - `input_file`: source file to be decrypted (will fail if this file does not exist).
+  - `output_file`: destination for saving the plaintext (will ask for permission to overwrite if the output file already exists and the optional `-f` flag was _not_ passed).
 
   **Flags**:
   - `-a`, `--algorithm`: decryption algorithm (must be one of `aesgcm128`, `aesgcm192`, `aesgcm256`, `chacha20poly1305`; defaults to `aesgcm256` if unspecified).
@@ -98,15 +98,15 @@ cloak <command> [args] [flags]
 
 **Utility Commands:**
 
-- `algos`: Prints a list of implemented cryptographic algorithms and highlights the default value.
+- `algos`: prints a list of implemented cryptographic algorithms and highlights the default value.
 
 ---
 
-- `methods`: Prints a list of implemented key-derivation methods and highlights the default value.
+- `methods`: prints a list of implemented key-derivation methods and highlights the default value.
 
 ---
 
-- `version`: Prints the program version.
+- `version`: prints the program version.
 
 ## Usage Examples
 
