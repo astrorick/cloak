@@ -27,25 +27,25 @@ Defaults: **crypto-algorithm** = `AES-GCM-256`, **key-derivation-method** = `Arg
 
 **Encryption (interactive, will prompt for password)**:
 
-```
+```bash
 cloak enc source.txt cipher.clk
 ```
 
 **Decryption (interactive, will prompt for password)**:
 
-```
+```bash
 cloak dec cipher.clk plain.txt
 ```
 
 **Help**
 
-```
+```bash
 cloak help
 ```
 
 ## Detailed Usage
 
-```
+```bash
 cloak <command> [args] [flags]
 ```
 
@@ -112,7 +112,7 @@ cloak <command> [args] [flags]
 
 Interactive **encryption** using default crypto algorithm and default key derivation method, prompting for password:
 
-```
+```bash
 cloak enc source.txt cipher.clk
 ```
 
@@ -120,7 +120,7 @@ cloak enc source.txt cipher.clk
 
 Interactive **decryption** using default crypto algorithm and default key derivation method, prompting for password:
 
-```
+```bash
 cloak dec cipher.clk plain.txt
 ```
 
@@ -128,7 +128,7 @@ cloak dec cipher.clk plain.txt
 
 Non-interactive **encryption** with injected password using default crypto algorithm and key derivation method:
 
-```
+```bash
 cloak enc source.txt cipher.clk -p my_strong_password
 ```
 
@@ -136,7 +136,7 @@ cloak enc source.txt cipher.clk -p my_strong_password
 
 Non-interactive **decryption** with injected password, custom crypto algorithm and key derivarion method, force overwrite and delete source if successful:
 
-```
+```bash
 cloak dec cipher.clk plain.txt -p my_strong_password -a chacha20poly1305 -m pbkdf2 -f -d
 ```
 
@@ -144,7 +144,7 @@ cloak dec cipher.clk plain.txt -p my_strong_password -a chacha20poly1305 -m pbkd
 
 Key-based **encryption** using a newly-generated 64-byte static cryptographic key and default crypto algorithm:
 
-```
+```bash
 cloak keygen mykey.bin
 cloak enc source.txt cipher.clk -k mykey.bin
 ```
