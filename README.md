@@ -16,6 +16,7 @@ Here's a list of currently available features:
 - Support for **AES-GCM** (128-bit, 192-bit, 256-bit) and **ChaCha20-Poly1305** crypto algorithms.
 - Support for password-based key derivation using **Argon2id** or **PBKDF2**.
 - Support for completely random cryptographic key generation in key-based encryption/decryption.
+- Utility command to generate cryptographically random passwords of customizable length.
 - Non-interactive operation by injecting password or key file with appropriate flags.
 - Utility flag to automatically overwrite the destination file.
 - Utility flag to optinally delete the source file after encryption/decryption.
@@ -60,6 +61,15 @@ cloak <command> [args] [flags]
   - `output`: output file path for saving the newly generated cryptographic key.
 
   **Flags**:
+  - `-h`, `--help`: show help for this command.
+
+---
+
+- `pswgen`: generates one or more cryptographically random passwords using printable ASCII characters and prints them to standard output, one per line.
+
+  **Flags**:
+  - `-l`, `--length`: length of each generated password (must be >= 8; defaults to `32` if unspecified).
+  - `-n`, `--number`: number of passwords to generate (must be >= 1; defaults to `1` if unspecified).
   - `-h`, `--help`: show help for this command.
 
 ---

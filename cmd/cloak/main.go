@@ -9,6 +9,7 @@ import (
 
 	"github.com/astrorick/cloak/pkg/algos"
 	"github.com/astrorick/cloak/pkg/keygen"
+	"github.com/astrorick/cloak/pkg/pswgen"
 	"github.com/astrorick/cloak/pkg/utils"
 	"github.com/astrorick/semantika"
 	"github.com/spf13/cobra"
@@ -25,6 +26,10 @@ func main() {
 	var (
 		//* Root Command Flags */
 		rootDisplayVersion bool // whether to display program version and exit
+
+		//* Pswgen Command Flags */
+		pswgenLength int // length of each generated password
+		pswgenNumber int // number of passwords to generate
 
 		//* Encrypt Command Flags */
 		encryptKeyFilePath    string // path to the cryptographic key (for key-based encryption)
@@ -109,6 +114,39 @@ func main() {
 			}
 		},
 	}
+
+	//* Pswgen Command */
+	pswgenCommand := &cobra.Command{
+		Use:   "pswgen",
+		Short: "Generate random passwords",
+		Long:  "Generate one or more cryptographically random passwords using printable ASCII characters. The password length and number of passwords can be customized with the optional -l and -n flags.",
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			// validate password length (minimum 8, matching utils.ValidatePassword)
+			if pswgenLength < 8 {
+				fmt.Fprintf(os.Stderr, "invalid password length (must be at least 8, got %d)\n", pswgenLength)
+				os.Exit(1)
+			}
+
+			// validate number of passwords
+			if pswgenNumber < 1 {
+				fmt.Fprintf(os.Stderr, "invalid number of passwords (must be at least 1, got %d)\n", pswgenNumber)
+				os.Exit(1)
+			}
+
+			// generate and print passwords
+			for i := 0; i < pswgenNumber; i++ {
+				password, err := pswgen.GenerateRandomPassword(pswgenLength)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error generating password: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Println(password)
+			}
+		},
+	}
+	pswgenCommand.Flags().IntVarP(&pswgenLength, "length", "l", 32, "length of each generated password")
+	pswgenCommand.Flags().IntVarP(&pswgenNumber, "number", "n", 1, "number of passwords to generate")
 
 	//* Encrypt Command */
 	encryptCommand := &cobra.Command{
@@ -504,7 +542,7 @@ func main() {
 	}
 
 	//* Run Root Command */
-	rootCommand.AddCommand(keygenCommand, encryptCommand, decryptCommand, algosCommand, methodsCommand, versionCommand)
+	rootCommand.AddCommand(keygenCommand, pswgenCommand, encryptCommand, decryptCommand, algosCommand, methodsCommand, versionCommand)
 	if err := rootCommand.Execute(); err != nil {
 		log.Fatal(err)
 	}
