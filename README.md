@@ -29,13 +29,13 @@ Defaults: **crypto-algorithm** = `AES-GCM-256`, **key-derivation-method** = `Arg
 **Encryption (interactive, will prompt for password)**:
 
 ```bash
-cloak enc source.txt cipher.clk
+cloak encrypt source.txt cipher.clk
 ```
 
 **Decryption (interactive, will prompt for password)**:
 
 ```bash
-cloak dec cipher.clk plain.txt
+cloak decrypt cipher.clk plain.txt
 ```
 
 **Help**
@@ -74,7 +74,7 @@ cloak <command> [args] [flags]
 
 ---
 
-- `enc`: encrypts the input file and writes the resulting ciphertext to the output file. Either a user-provided password or a key file can be used for encryption.
+- `encrypt`: encrypts the input file and writes the resulting ciphertext to the output file. Either a user-provided password or a key file can be used for encryption.
 
   **Args**:
   - `input_file`: source file to be encrypted (will fail if this file does not exist).
@@ -91,7 +91,7 @@ cloak <command> [args] [flags]
 
 ---
 
-- `dec`: decrypts the input file and writes the resulting plaintext to the output file. Either a password (interactive or `-p`) or a key file (`-k`) can be used for decryption.
+- `decrypt`: decrypts the input file and writes the resulting plaintext to the output file. Either a password (interactive or `-p`) or a key file (`-k`) can be used for decryption.
 
   **Args**:
   - `input_file`: source file to be decrypted (will fail if this file does not exist).
@@ -123,7 +123,7 @@ cloak <command> [args] [flags]
 Interactive **encryption** using default crypto algorithm and default key derivation method, prompting for password:
 
 ```bash
-cloak enc source.txt cipher.clk
+cloak encrypt source.txt cipher.clk
 ```
 
 ---
@@ -131,7 +131,7 @@ cloak enc source.txt cipher.clk
 Interactive **decryption** using default crypto algorithm and default key derivation method, prompting for password:
 
 ```bash
-cloak dec cipher.clk plain.txt
+cloak decrypt cipher.clk plain.txt
 ```
 
 ---
@@ -139,7 +139,7 @@ cloak dec cipher.clk plain.txt
 Non-interactive **encryption** with injected password using default crypto algorithm and key derivation method:
 
 ```bash
-cloak enc source.txt cipher.clk -p my_strong_password
+cloak encrypt source.txt cipher.clk -p my_strong_password
 ```
 
 ---
@@ -147,7 +147,7 @@ cloak enc source.txt cipher.clk -p my_strong_password
 Non-interactive **decryption** with injected password, custom crypto algorithm and key derivarion method, force overwrite and delete source if successful:
 
 ```bash
-cloak dec cipher.clk plain.txt -p my_strong_password -a chacha20poly1305 -m pbkdf2 -f -d
+cloak decrypt cipher.clk plain.txt -p my_strong_password -a chacha20poly1305 -m pbkdf2 -f -d
 ```
 
 ---
@@ -156,7 +156,7 @@ Key-based **encryption** using a newly-generated 64-byte static cryptographic ke
 
 ```bash
 cloak keygen mykey.bin
-cloak enc source.txt cipher.clk -k mykey.bin
+cloak encrypt source.txt cipher.clk -k mykey.bin
 ```
 
 ## Contributing

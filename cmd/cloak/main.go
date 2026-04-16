@@ -150,7 +150,7 @@ func main() {
 
 	//* Encrypt Command */
 	encryptCommand := &cobra.Command{
-		Use:   "enc input output",
+		Use:   "encrypt input output",
 		Short: "Encrypt files",
 		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. Either a cryptographic key file or a password can be used for encryption. If the optional -d flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
@@ -322,7 +322,7 @@ func main() {
 
 	//* Decrypt Command */
 	decryptCommand := &cobra.Command{
-		Use:   "dec input output",
+		Use:   "decrypt input output",
 		Short: "Decrypt files",
 		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. Either a cryptographic key file or a password can be used for decryption. If the optional -d flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
