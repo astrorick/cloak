@@ -1,3 +1,4 @@
+// Package keygen generates random keys and derives keys from passwords.
 package keygen
 
 import (
@@ -7,7 +8,7 @@ import (
 	"github.com/astrorick/cloak/pkg/keygen/methods"
 )
 
-// GenerateRandomKey produces a randomly generated key of fixed size for file encryption/decryption.
+// GenerateRandomKey returns a random 64-byte key.
 func GenerateRandomKey() ([]byte, error) {
 	// make a completely random 64 byte key (no password needed here)
 	key := make([]byte, 64)
@@ -18,24 +19,24 @@ func GenerateRandomKey() ([]byte, error) {
 	return key, nil
 }
 
-// KeyDerMethod is the interface that each implemented key derivation method must satisfy.
+// KeyDerMethod is a password-based key derivation function.
 type KeyDerMethod interface {
-	Name() string        // name of the method
-	Description() string // method description
+	Name() string        // Name returns the method's CLI name, which must match its key in [ImplementedMethods].
+	Description() string // Description returns a short description of the method.
 
-	DeriveKey(psw string, salt []byte) ([]byte, error)
+	DeriveKey(psw string, salt []byte) ([]byte, error) // DeriveKey derives a key from psw and salt.
 }
 
-// ImplementedMethods maps implemented methods to their internal name.
+// ImplementedMethods maps CLI names to the available key derivation methods.
 var ImplementedMethods = map[string]KeyDerMethod{
 	"argon2": methods.NewArgon2(),
 	"pbkdf2": methods.NewPBKDF2(),
 }
 
-// DefaultMethod represents the default key derivation function used when no flag is passed.
+// DefaultMethod is the key derivation method used when none is specified.
 var DefaultMethod = ImplementedMethods["argon2"]
 
-// GetImplementedMethodNames returns a strings slice with the names of implemented key derivation methods.
+// GetImplementedMethodNames returns the sorted names of the methods in [ImplementedMethods].
 func GetImplementedMethodNames() []string {
 	methodNames := make([]string, 0, len(ImplementedMethods))
 	for methodName := range ImplementedMethods {

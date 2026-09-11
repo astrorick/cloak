@@ -6,15 +6,17 @@ import (
 	"hash"
 )
 
+// PBKDF2 derives keys with PBKDF2.
 type PBKDF2 struct {
 	NameStr string // name of the method
 	DescStr string // method description
 
-	Hash    func() hash.Hash // hasing function for key derivation
+	Hash    func() hash.Hash // hash function for key derivation
 	Iter    int              // number of iterations
-	KeySize int              // desired key size
+	KeySize int              // key size in bytes
 }
 
+// NewPBKDF2 returns a PBKDF2 with Cloak's default parameters.
 func NewPBKDF2() *PBKDF2 {
 	return &PBKDF2{
 		NameStr: "pbkdf2",
@@ -34,6 +36,7 @@ func (kg *PBKDF2) Description() string {
 	return kg.DescStr
 }
 
+// DeriveKey derives a key of KeySize bytes from psw and salt.
 func (kg *PBKDF2) DeriveKey(psw string, salt []byte) ([]byte, error) {
 	return pbkdf2.Key(kg.Hash, psw, salt, kg.Iter, kg.KeySize)
 }

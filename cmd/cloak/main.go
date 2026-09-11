@@ -26,8 +26,8 @@ func run() error {
 	//* Program Version */
 	appVersion := &semantika.Version{
 		Major: 0,
-		Minor: 6,
-		Patch: 1,
+		Minor: 7,
+		Patch: 0,
 	}
 
 	var (
@@ -122,7 +122,7 @@ func run() error {
 	pswgenCommand := &cobra.Command{
 		Use:   "pswgen",
 		Short: "Generate random passwords",
-		Long:  "Generate one or more cryptographically random passwords using printable ASCII characters. The password length and number of passwords can be customized with the optional -l and -n flags.",
+		Long:  "Generate one or more cryptographically random passwords using letters, digits, and the symbols " + pswgen.AllowedSymbols + ". The password length and number of passwords can be customized with the optional -l and -n flags.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// validate password length (minimum 8, matching utils.ValidatePassword)

@@ -4,6 +4,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
+// Argon2 derives keys with Argon2id.
 type Argon2 struct {
 	NameStr string // name of the method
 	DescStr string // method description
@@ -11,9 +12,10 @@ type Argon2 struct {
 	Time    uint32 // number of passes over the memory
 	Memory  uint32 // size of memory in KiB
 	Threads uint8  // CPU threads to use
-	KeySize uint32 // desired key size
+	KeySize uint32 // key size in bytes
 }
 
+// NewArgon2 returns an Argon2 with Cloak's default parameters.
 func NewArgon2() *Argon2 {
 	return &Argon2{
 		NameStr: "argon2",
@@ -34,6 +36,7 @@ func (kg *Argon2) Description() string {
 	return kg.DescStr
 }
 
+// DeriveKey derives a key of KeySize bytes from psw and salt. It never returns an error.
 func (kg *Argon2) DeriveKey(psw string, salt []byte) ([]byte, error) {
 	return argon2.IDKey([]byte(psw), salt, kg.Time, kg.Memory, kg.Threads, kg.KeySize), nil
 }

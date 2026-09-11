@@ -24,7 +24,9 @@ Here's a list of currently available features:
 
 ## Quick Start
 
-Defaults: **crypto-algorithm** = `AES-GCM-256`, **key-derivation-method** = `Argon2id`.
+Defaults:
+- **crypto-algorithm** = `AES-GCM-256`
+- **key-derivation-method** = `Argon2id`
 
 **Encryption (interactive, will prompt for password)**:
 
@@ -65,7 +67,7 @@ cloak <command> [args] [flags]
 
 ---
 
-- `pswgen`: generates one or more cryptographically random passwords using printable ASCII characters and prints them to standard output, one per line.
+- `pswgen`: generates one or more cryptographically random passwords using letters, digits, and the symbols `!@#%^*-_=+.,?`, and prints them to standard output, one per line.
 
   **Flags**:
   - `-l`, `--length`: length of each generated password (must be >= 8; defaults to `32` if unspecified).
@@ -83,7 +85,7 @@ cloak <command> [args] [flags]
   **Flags**:
   - `-a`, `--algorithm`: encryption algorithm (must be one of `aesgcm128`, `aesgcm192`, `aesgcm256`, `chacha20poly1305`; defaults to `aesgcm256` if unspecified).
   - `-m`, `--method`: key-derivation method for password-based encryption (must be one of `argon2`, `pbkdf2`; defaults to `argon2` if unspecified).
-  - `-p`, `--password`: provide password non-interactively (mutually exclusive with `-k`, must be >= 8 chars, printable ASCII).
+  - `-p`, `--password`: provide password non-interactively (mutually exclusive with `-k`, must be >= 8 chars, only letters, digits, and `!@#%^*-_=+.,?`).
   - `-k`, `--key`: path to a 64-byte key file for key-based encryption (mutually exclusive with `-p`).
   - `-f`, `--force`: overwrite the output file without prompting.
   - `-d`, `--delete`: delete source file after successful operation.
@@ -100,7 +102,7 @@ cloak <command> [args] [flags]
   **Flags**:
   - `-a`, `--algorithm`: decryption algorithm (must be one of `aesgcm128`, `aesgcm192`, `aesgcm256`, `chacha20poly1305`; defaults to `aesgcm256` if unspecified).
   - `-m`, `--method`: key-derivation method for password-based decryption (must be one of `argon2`, `pbkdf2`; defaults to `argon2` if unspecified).
-  - `-p`, `--password`: provide password non-interactively (mutually exclusive with `-k`, must be >= 8 chars, printable ASCII).
+  - `-p`, `--password`: provide password non-interactively (mutually exclusive with `-k`, must be >= 8 chars, only letters, digits, and `!@#%^*-_=+.,?`).
   - `-k`, `--key`: path to a 64-byte key file for key-based decryption (mutually exclusive with `-p`).
   - `-f`, `--force`: overwrite the output file without prompting.
   - `-d`, `--delete`: delete source file after successful operation.

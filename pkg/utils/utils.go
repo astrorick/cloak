@@ -1,3 +1,4 @@
+// Package utils provides shared helpers for the Cloak CLI.
 package utils
 
 import (
@@ -5,21 +6,21 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"slices"
 	"strings"
 	"syscall"
 
+	"github.com/astrorick/cloak/pkg/pswgen"
 	"github.com/astrorick/semantika"
 	"golang.org/x/term"
 )
 
-// PrintVersion prints the provided app version to the terminal.
+// PrintVersion prints the app version to stdout.
 func PrintVersion(appVersion *semantika.Version) {
 	fmt.Printf("Cloak v%s by Astrorick.\n", appVersion.String())
 }
 
-// FileExists returns (true, nil) if the file specified by filePath exists, (false, nil) if it doesn't, or (false, err) if the file could not be accessed.
+// FileExists reports whether filePath exists. It returns an error if filePath cannot be accessed.
 func FileExists(filePath string) (bool, error) {
 	_, err := os.Stat(filePath)
 
@@ -34,7 +35,7 @@ func FileExists(filePath string) (bool, error) {
 	return false, err
 }
 
-// ConfirmOverwrite asks the user if they want to overwrite the file specified by filePath until they provide an acceptable answer. It returns true if the file should be overwritten, and false otherwise.
+// ConfirmOverwrite asks the user whether to overwrite filePath, repeating until the answer is valid. An empty answer counts as yes.
 func ConfirmOverwrite(filePath string) bool {
 	positiveAnswers := []string{"y", "yes", ""}
 	negativeAnswers := []string{"n", "no"}
@@ -62,7 +63,7 @@ func ConfirmOverwrite(filePath string) bool {
 	}
 }
 
-// RequestUserPassword allows the user to input a password while following security guidelines (minimum length, allowed characters, etc.).
+// RequestUserPassword prompts for a password with masked input, repeating until it passes [ValidatePassword] and is confirmed.
 func RequestUserPassword() string {
 	for {
 		// ask for password
@@ -73,7 +74,7 @@ func RequestUserPassword() string {
 
 		// validate password
 		if !ValidatePassword(providedPassword) {
-			fmt.Println("Invalid password. Use only A-Z, a-z, 0-9, and standard special characters (no spaces). Minimum 8 characters.")
+			fmt.Printf("Invalid password. Use only A-Z, a-z, 0-9, and the symbols %s (no spaces). Minimum 8 characters.\n", pswgen.AllowedSymbols)
 			continue
 		}
 
@@ -93,7 +94,7 @@ func RequestUserPassword() string {
 	}
 }
 
-// ValidatePassword evaluates the suitability of the provided password, returning true if the password is valid and false otherwise.
+// ValidatePassword reports whether psw is at least 8 characters long and uses only characters from [pswgen.Charset].
 func ValidatePassword(psw string) bool {
 	// check password length
 	if len(psw) < 8 {
@@ -101,8 +102,10 @@ func ValidatePassword(psw string) bool {
 	}
 
 	// check for valid password content
-	if !regexp.MustCompile(`^[\x21-\x7E]+$`).MatchString(psw) {
-		return false
+	for _, r := range psw {
+		if !strings.ContainsRune(pswgen.Charset, r) {
+			return false
+		}
 	}
 
 	return true

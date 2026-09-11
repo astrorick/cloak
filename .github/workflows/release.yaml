@@ -13,24 +13,29 @@ jobs:
     permissions:
       contents: write # required to upload release assets
 
+    env:
+      TAG: ${{ github.ref_name }}
+
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
-          go-version: '1.25.5'
+          go-version-file: go.mod
 
-      - name: Get Tag Name
-        id: vars
+      - name: Check Tag Matches App Version
         run: |
-          echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          APP_VERSION=$(go run cmd/cloak/main.go version | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          if [ "${APP_VERSION}" != "${TAG}" ]; then
+            echo "::error::Tag ${TAG} does not match app version ${APP_VERSION} in cmd/cloak/main.go"
+            exit 1
+          fi
 
       - name: Build and Compress Binaries
         env:
-          TAG: ${{ steps.vars.outputs.tag }}
+          CGO_ENABLED: '0'
         run: |
           mkdir -p dist
 
@@ -45,7 +50,7 @@ jobs:
             mkdir -p "${OUTPUT_DIR}"
 
             echo "Building for ${GOOS}-${GOARCH}..."
-            GOOS="${GOOS}" GOARCH="${GOARCH}" go build -o "${OUTPUT_DIR}/${BINNAME}" cmd/cloak/main.go
+            GOOS="${GOOS}" GOARCH="${GOARCH}" go build -trimpath -ldflags="-s -w" -o "${OUTPUT_DIR}/${BINNAME}" cmd/cloak/main.go
 
             echo "Packaging ${ARCHIVE_NAME}..."
             zip -j "dist/${ARCHIVE_NAME}" "${OUTPUT_DIR}/${BINNAME}"
@@ -63,10 +68,10 @@ jobs:
           build_and_package "darwin" "arm64" ""
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ steps.vars.outputs.tag }}
-          name: Cloak ${{ steps.vars.outputs.tag }}
+          tag_name: ${{ env.TAG }}
+          name: Cloak ${{ env.TAG }}
           files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

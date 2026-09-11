@@ -1,3 +1,4 @@
+// Package algos provides the encryption algorithms available in Cloak.
 package algos
 
 import (
@@ -6,16 +7,16 @@ import (
 	"github.com/astrorick/cloak/pkg/algos/aead"
 )
 
-// CryptoAlgorithm is the interface that each implemented crypto algorithm must satisfy.
+// CryptoAlgorithm is an authenticated encryption algorithm. It uses only as many leading bytes of the key as it needs.
 type CryptoAlgorithm interface {
-	Name() string        // name of the algorithm
-	Description() string // algorithm description
+	Name() string        // Name returns the algorithm's CLI name, which must match its key in [ImplementedAlgos].
+	Description() string // Description returns a short description of the algorithm.
 
-	Encrypt(plainBytes []byte, key []byte) ([]byte, error)  // encrypt using key
-	Decrypt(cipherBytes []byte, key []byte) ([]byte, error) // decrypt using key
+	Encrypt(plainBytes []byte, key []byte) ([]byte, error)  // Encrypt returns a random nonce followed by the ciphertext.
+	Decrypt(cipherBytes []byte, key []byte) ([]byte, error) // Decrypt reverses Encrypt.
 }
 
-// ImplementedAlgos maps implemented algorithms to their internal name.
+// ImplementedAlgos maps CLI names to the available encryption algorithms.
 var ImplementedAlgos = map[string]CryptoAlgorithm{
 	//* Advanced Encryption Standard (AES) Family */
 	"aesgcm128": aead.NewAESGCM128(),
@@ -26,10 +27,10 @@ var ImplementedAlgos = map[string]CryptoAlgorithm{
 	"chacha20poly1305": aead.NewChaCha20Poly1305(),
 }
 
-// DefaultAlgo represents the default crypto algorithm used when no flag is passed.
+// DefaultAlgo is the encryption algorithm used when none is specified.
 var DefaultAlgo = ImplementedAlgos["aesgcm256"]
 
-// GetImplementedAlgoNames returns a strings slice with the names of implemented algorithms.
+// GetImplementedAlgoNames returns the sorted names of the algorithms in [ImplementedAlgos].
 func GetImplementedAlgoNames() []string {
 	algoNames := make([]string, 0, len(ImplementedAlgos))
 	for algoName := range ImplementedAlgos {
