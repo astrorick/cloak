@@ -27,7 +27,7 @@ func run() error {
 	appVersion := &semantika.Version{
 		Major: 0,
 		Minor: 7,
-		Patch: 0,
+		Patch: 1,
 	}
 
 	var (
@@ -68,7 +68,7 @@ func run() error {
 				return nil
 			}
 
-			// if no subcommand is given, display help
+			// if no subcommand is given, display help instead
 			return cmd.Help()
 		},
 		CompletionOptions: cobra.CompletionOptions{
@@ -81,13 +81,13 @@ func run() error {
 	keygenCommand := &cobra.Command{
 		Use:   "keygen output",
 		Short: "Generate crypto keys",
-		Long:  "Generate a static cryptographic key of fixed size that can be used to encrypt and decrypt files, and save it to the specified location.",
+		Long:  "Generate a static cryptographic key of fixed size that can be used to encrypt and decrypt files, and save it to the specified output location.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// read args
 			outputFilePath := args[0]
 
-			// check that output file does not already exist, but NEVER OVERWRITE
+			// check that output file does not already exist, and NEVER OVERWRITE
 			outputFileExists, err := utils.FileExists(outputFilePath)
 			if err != nil {
 				return fmt.Errorf("output path error: %w", err)
@@ -122,25 +122,22 @@ func run() error {
 	pswgenCommand := &cobra.Command{
 		Use:   "pswgen",
 		Short: "Generate random passwords",
-		Long:  "Generate one or more cryptographically random passwords using letters, digits, and the symbols " + pswgen.AllowedSymbols + ". The password length and number of passwords can be customized with the optional -l and -n flags.",
+		Long:  "Generate one or more cryptographically random passwords using letters, digits, and the symbols " + pswgen.AllowedSymbols + ". Password length and number of generated passwords can be customized with the optional -l and -n flags.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate password length (minimum 8, matching utils.ValidatePassword)
-			if pswgenLength < 8 {
-				return fmt.Errorf("invalid password length (must be at least 8, got %d)", pswgenLength)
-			}
-
-			// validate number of passwords
+			// validate requested number of password
 			if pswgenNumber < 1 {
 				return fmt.Errorf("invalid number of passwords (must be at least 1, got %d)", pswgenNumber)
 			}
 
 			// generate and print passwords
-			for i := 0; i < pswgenNumber; i++ {
+			for range pswgenNumber {
 				password, err := pswgen.GenerateRandomPassword(pswgenLength)
 				if err != nil {
 					return fmt.Errorf("error generating password: %w", err)
 				}
+
+				// print password to stdout
 				fmt.Println(password)
 			}
 
@@ -243,7 +240,7 @@ func run() error {
 				// check if user provided a -p flag
 				if encryptPassword != "" {
 					// validate user-provided password (passed by -p flag)
-					if !utils.ValidatePassword(encryptPassword) {
+					if !pswgen.ValidatePassword(encryptPassword) {
 						return errors.New("invalid password")
 					}
 				} else {
@@ -394,7 +391,7 @@ func run() error {
 				// check if user provided a -p flag
 				if decryptPassword != "" {
 					// validate user-provided password (passed by -p flag)
-					if !utils.ValidatePassword(decryptPassword) {
+					if !pswgen.ValidatePassword(decryptPassword) {
 						return errors.New("invalid password")
 					}
 				} else {
@@ -457,7 +454,7 @@ func run() error {
 		Long:  "Display the list of available cryptographic algorithms for encryption and decryption.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("Implemented algorithms:")
+			fmt.Println("Implemented crypto algorithms for encryption/decryption:")
 
 			for _, algoName := range algos.GetImplementedAlgoNames() {
 				algo := algos.ImplementedAlgos[algoName]
@@ -480,7 +477,7 @@ func run() error {
 		Long:  "Display the list of available methods for key derivation.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("Implemented methods:")
+			fmt.Println("Implemented methods for key derivation:")
 
 			for _, methodName := range keygen.GetImplementedMethodNames() {
 				method := keygen.ImplementedMethods[methodName]

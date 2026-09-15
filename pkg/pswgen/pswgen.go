@@ -4,25 +4,40 @@ package pswgen
 import (
 	"crypto/rand"
 	"math/big"
+	"strings"
 )
 
-// AllowedSymbols are the special characters allowed in passwords, chosen to be safe in shells and config files.
-const AllowedSymbols = "!@#%^*-_=+.,?"
+const (
+	AllowedUppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" // AllowedUppercase are the uppercase letters allowed in passwords.
+	AllowedLowercase = "abcdefghijklmnopqrstuvwxyz" // AllowedLowercase are the lowercase letters allowed in passwords.
+	AllowedNumbers   = "0123456789"                 // AllowedNumbers are the numbers allowed in passwords.
+	AllowedSymbols   = "!@#%^*-_=+.,?"              // AllowedSymbols are the special characters allowed in passwords, chosen to be safe for shells and config files.
 
-// Charset is the set of characters allowed in passwords, including ASCII letters, digits, and [AllowedSymbols].
-const Charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz" + "0123456789" + AllowedSymbols
+	AllowedCharset = AllowedUppercase + AllowedLowercase + AllowedNumbers + AllowedSymbols // Charset is the set of characters allowed in passwords, including ASCII letters, digits, and [AllowedSymbols].
+)
 
-// GenerateRandomPassword returns a random password of the given length, drawn uniformly from [Charset]. It panics if a negative password length is provided.
+// GenerateRandomPassword returns a random password of the given length, drawn uniformly from the [AllowedCharset]. It panics if a negative password length is provided.
 func GenerateRandomPassword(length int) (string, error) {
-	max := big.NewInt(int64(len(Charset)))
+	max := big.NewInt(int64(len(AllowedCharset)))
 	buf := make([]byte, length)
 	for i := range length {
 		n, err := rand.Int(rand.Reader, max)
 		if err != nil {
 			return "", err
 		}
-		buf[i] = Charset[n.Int64()]
+		buf[i] = AllowedCharset[n.Int64()]
 	}
 
 	return string(buf), nil
+}
+
+// ValidatePassword reports whether psw uses only characters from the [AllowedCharset].
+func ValidatePassword(psw string) bool {
+	for _, r := range psw {
+		if !strings.ContainsRune(AllowedCharset, r) {
+			return false
+		}
+	}
+
+	return true
 }

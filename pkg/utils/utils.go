@@ -17,7 +17,7 @@ import (
 
 // PrintVersion prints the app version to stdout.
 func PrintVersion(appVersion *semantika.Version) {
-	fmt.Printf("Cloak v%s by Astrorick.\n", appVersion.String())
+	fmt.Printf("Cloak v%s by Astrorick\n", appVersion.String())
 }
 
 // FileExists reports whether filePath exists. It returns an error if filePath cannot be accessed.
@@ -35,9 +35,9 @@ func FileExists(filePath string) (bool, error) {
 	return false, err
 }
 
-// ConfirmOverwrite asks the user whether to overwrite filePath, repeating until the answer is valid. An empty answer counts as yes.
+// ConfirmOverwrite asks the user whether to overwrite filePath, repeating until a valid answer is provided.
 func ConfirmOverwrite(filePath string) bool {
-	positiveAnswers := []string{"y", "yes", ""}
+	affirmativeAnswers := []string{"y", "yes", ""}
 	negativeAnswers := []string{"n", "no"}
 	reader := bufio.NewReader(os.Stdin)
 
@@ -54,16 +54,16 @@ func ConfirmOverwrite(filePath string) bool {
 		}
 
 		// check if answer is positive
-		if slices.Contains(positiveAnswers, userAnswer) {
+		if slices.Contains(affirmativeAnswers, userAnswer) {
 			return true
 		}
 
 		// repeat question
-		fmt.Print("Invalid answer. Overwrite? (Y/n): ")
+		fmt.Printf("Invalid answer. Overwrite output file \"%s\"? (Y/n): ", filePath)
 	}
 }
 
-// RequestUserPassword prompts for a password with masked input, repeating until it passes [ValidatePassword] and is confirmed.
+// RequestUserPassword prompts for a password with masked input, repeating until it passes the [pswgen.ValidatePassword] check.
 func RequestUserPassword() string {
 	for {
 		// ask for password
@@ -73,8 +73,8 @@ func RequestUserPassword() string {
 		providedPassword := string(bytePassword)
 
 		// validate password
-		if !ValidatePassword(providedPassword) {
-			fmt.Printf("Invalid password. Use only A-Z, a-z, 0-9, and the symbols %s (no spaces). Minimum 8 characters.\n", pswgen.AllowedSymbols)
+		if !pswgen.ValidatePassword(providedPassword) {
+			fmt.Printf("Invalid password. Use only A-Z, a-z, 0-9, and the symbols %s (no spaces).\n", pswgen.AllowedSymbols)
 			continue
 		}
 
@@ -92,21 +92,4 @@ func RequestUserPassword() string {
 			continue
 		}
 	}
-}
-
-// ValidatePassword reports whether psw is at least 8 characters long and uses only characters from [pswgen.Charset].
-func ValidatePassword(psw string) bool {
-	// check password length
-	if len(psw) < 8 {
-		return false
-	}
-
-	// check for valid password content
-	for _, r := range psw {
-		if !strings.ContainsRune(pswgen.Charset, r) {
-			return false
-		}
-	}
-
-	return true
 }

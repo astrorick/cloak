@@ -21,7 +21,7 @@ type AESGCM struct {
 func newAESGCM(keySizeBytes int) *AESGCM {
 	return &AESGCM{
 		NameStr: fmt.Sprintf("aesgcm%d", keySizeBytes*8),
-		DescStr: fmt.Sprintf("symmetric AES with GCM authentication (%d-bit)", keySizeBytes*8),
+		DescStr: fmt.Sprintf("symmetric %d-bit AES with GCM authentication", keySizeBytes*8),
 
 		KeySizeBytes: keySizeBytes,
 		NewCipher: func(key []byte) (cipher.AEAD, error) {
