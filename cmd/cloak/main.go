@@ -126,6 +126,11 @@ func run() error {
 		Long:  "Generate one or more cryptographically random passwords using letters, digits, and the symbols " + pswgen.AllowedSymbols + ". Password length and number of generated passwords can be customized with the optional -l and -n flags.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// validate requested password length
+			if pswgenLength < pswgen.MinPasswordLength {
+				return fmt.Errorf("invalid password length (must be at least %d characters long, got %d)", pswgen.MinPasswordLength, pswgenLength)
+			}
+
 			// validate requested number of password
 			if pswgenNumber < 1 {
 				return fmt.Errorf("invalid number of passwords (must be at least 1, got %d)", pswgenNumber)
@@ -267,7 +272,10 @@ func run() error {
 					}
 				} else {
 					// request the user inputs its password from terminal
-					encryptPassword = utils.RequestUserPassword()
+					encryptPassword, err = utils.RequestUserPassword(true) // ask for double confirmation
+					if err != nil {
+						return fmt.Errorf("error reading password from terminal: %w", err)
+					}
 				}
 
 				// derive encryption key from user password and salt using the standard key size defined in the keygen package
@@ -441,7 +449,10 @@ func run() error {
 					}
 				} else {
 					// request the user inputs its password from terminal
-					decryptPassword = utils.RequestUserPassword()
+					decryptPassword, err = utils.RequestUserPassword(false) // no confirmation needed
+					if err != nil {
+						return fmt.Errorf("error reading password from terminal: %w", err)
+					}
 				}
 
 				// derive decryption key from user password and salt using the standard key size defined in the keygen package

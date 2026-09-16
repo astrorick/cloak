@@ -43,13 +43,13 @@ func FileExists(filePath string) (bool, os.FileInfo, error) {
 	return false, nil, err
 }
 
-// ConfirmOverwrite asks the user whether to overwrite filePath, repeating until a valid answer is provided.
+// ConfirmOverwrite asks the user whether to overwrite filePath, repeating until a valid answer is provided. An empty answer counts as no.
 func ConfirmOverwrite(filePath string) bool {
-	affirmativeAnswers := []string{"y", "yes", ""}
-	negativeAnswers := []string{"n", "no"}
+	affirmativeAnswers := []string{"y", "yes"}
+	negativeAnswers := []string{"n", "no", ""}
 	reader := bufio.NewReader(os.Stdin)
 
-	fmt.Printf("Output file \"%s\" already exists. Overwrite? (Y/n): ", filePath)
+	fmt.Printf("Output file \"%s\" already exists. Overwrite? (y/N): ", filePath)
 
 	// keep asking the user until they provides an acceptable answer
 	for {
@@ -67,34 +67,45 @@ func ConfirmOverwrite(filePath string) bool {
 		}
 
 		// repeat question
-		fmt.Printf("Invalid answer. Overwrite output file \"%s\"? (Y/n): ", filePath)
+		fmt.Printf("Invalid answer. Overwrite output file \"%s\"? (y/N): ", filePath)
 	}
 }
 
-// RequestUserPassword prompts for a password with masked input, repeating until it passes the [pswgen.ValidatePassword] check.
-func RequestUserPassword() string {
+// RequestUserPassword prompts for a password with masked input, repeating until it passes the [pswgen.ValidatePassword] check. If confirm is true, the password must also be entered a second time. It returns an error if the password cannot be read, e.g. when stdin is not a terminal.
+func RequestUserPassword(confirm bool) (string, error) {
 	for {
 		// ask for password
 		fmt.Print("Enter password: ")
-		bytePassword, _ := term.ReadPassword(int(syscall.Stdin)) // using term package for masked input
+		bytePassword, err := term.ReadPassword(int(syscall.Stdin)) // using term package for masked input
 		fmt.Println()
+		if err != nil {
+			return "", err
+		}
 		providedPassword := string(bytePassword)
 
 		// validate password
 		if !pswgen.ValidatePassword(providedPassword) {
-			fmt.Printf("Invalid password. Use only A-Z, a-z, 0-9, and the symbols %s (no spaces).\n", pswgen.AllowedSymbols)
+			fmt.Printf("Invalid password. Use at least %d characters, only A-Z, a-z, 0-9, and the symbols %s (no spaces).\n", pswgen.MinPasswordLength, pswgen.AllowedSymbols)
 			continue
+		}
+
+		// skip confirmation if not required
+		if !confirm {
+			return providedPassword, nil
 		}
 
 		// ask for password again
 		fmt.Print("Confirm password: ")
-		byteConfirm, _ := term.ReadPassword(int(syscall.Stdin)) // using term for masked input
+		byteConfirm, err := term.ReadPassword(int(syscall.Stdin)) // using term package for masked input
 		fmt.Println()
+		if err != nil {
+			return "", err
+		}
 		confirmPassword := string(byteConfirm)
 
 		// check if passwords match
 		if providedPassword == confirmPassword {
-			return providedPassword
+			return providedPassword, nil
 		} else {
 			fmt.Println("Passwords do not match. Try again.")
 			continue

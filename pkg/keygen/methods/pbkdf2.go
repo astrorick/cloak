@@ -23,7 +23,7 @@ func NewPBKDF2(keySize int) *PBKDF2 {
 		DescStr: "password-based key derivation function 2",
 
 		Hash:    sha512.New,
-		Iter:    100_000,
+		Iter:    220_000, // OWASP minimum for PBKDF2-HMAC-SHA512 (Password Storage Cheat Sheet)
 		KeySize: keySize,
 	}
 }

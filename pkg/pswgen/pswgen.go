@@ -14,6 +14,8 @@ const (
 	AllowedSymbols   = "!@#%^*-_=+.,?"              // AllowedSymbols are the special characters allowed in passwords, chosen to be safe for shells and config files.
 
 	AllowedCharset = AllowedUppercase + AllowedLowercase + AllowedNumbers + AllowedSymbols // Charset is the set of characters allowed in passwords, including ASCII letters, digits, and [AllowedSymbols].
+
+	MinPasswordLength = 8 // MinPasswordLength is the minimum number of characters in a password.
 )
 
 // GenerateRandomPassword returns a random password of the given length, drawn uniformly from the [AllowedCharset]. It panics if a negative password length is provided.
@@ -31,8 +33,14 @@ func GenerateRandomPassword(length int) (string, error) {
 	return string(buf), nil
 }
 
-// ValidatePassword reports whether psw uses only characters from the [AllowedCharset].
+// ValidatePassword reports whether psw is at least [MinPasswordLength] characters long and uses only characters from the [AllowedCharset].
 func ValidatePassword(psw string) bool {
+	// check password length
+	if len(psw) < MinPasswordLength {
+		return false
+	}
+
+	// check password content
 	for _, r := range psw {
 		if !strings.ContainsRune(AllowedCharset, r) {
 			return false
