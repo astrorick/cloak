@@ -13,8 +13,9 @@ type AESGCM struct {
 	NameStr string
 	DescStr string
 
-	KeySizeBytes int
-	NewCipher    func(key []byte) (cipher.AEAD, error)
+	NonceSizeBytes int
+	KeySizeBytes   int
+	NewCipher      func(key []byte) (cipher.AEAD, error)
 }
 
 // newAESGCM initializes a new AESGCM instance with the provided key
@@ -23,7 +24,8 @@ func newAESGCM(keySizeBytes int) *AESGCM {
 		NameStr: fmt.Sprintf("aesgcm%d", keySizeBytes*8),
 		DescStr: fmt.Sprintf("symmetric %d-bit AES with GCM authentication", keySizeBytes*8),
 
-		KeySizeBytes: keySizeBytes,
+		NonceSizeBytes: 12,
+		KeySizeBytes:   keySizeBytes,
 		NewCipher: func(key []byte) (cipher.AEAD, error) {
 			cipherBlock, err := aes.NewCipher(key)
 			if err != nil {
@@ -62,24 +64,28 @@ func (aead *AESGCM) Description() string {
 	return aead.DescStr
 }
 
-func (aead *AESGCM) Encrypt(plainBytes []byte, key []byte) ([]byte, error) {
+func (aead *AESGCM) NonceSize() int {
+	return aead.NonceSizeBytes
+}
+
+func (aead *AESGCM) Encrypt(plainBytes []byte, key []byte) ([]byte, []byte, error) {
 	// get cipher from key
 	aeadCipher, err := aead.NewCipher(key[:aead.KeySizeBytes])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// generate random nonce
-	nonce := make([]byte, 12)
+	nonce := make([]byte, aead.NonceSizeBytes)
 	if _, err := rand.Read(nonce); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// return (nonce + ciphertext)
-	return append(nonce, aeadCipher.Seal(nil, nonce, plainBytes, nil)...), nil
+	// return (nonce, ciphertext)
+	return nonce, aeadCipher.Seal(nil, nonce, plainBytes, nil), nil
 }
 
-func (aead *AESGCM) Decrypt(cipherBytes []byte, key []byte) ([]byte, error) {
+func (aead *AESGCM) Decrypt(nonce []byte, cipherBytes []byte, key []byte) ([]byte, error) {
 	// get cipher from key
 	aeadCipher, err := aead.NewCipher(key[:aead.KeySizeBytes])
 	if err != nil {
@@ -87,7 +93,7 @@ func (aead *AESGCM) Decrypt(cipherBytes []byte, key []byte) ([]byte, error) {
 	}
 
 	// decrypt data
-	plainBytes, err := aeadCipher.Open(nil, cipherBytes[:12], cipherBytes[12:], nil)
+	plainBytes, err := aeadCipher.Open(nil, nonce, cipherBytes, nil)
 	if err != nil {
 		return nil, err
 	}

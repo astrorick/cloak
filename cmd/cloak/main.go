@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 
 	"github.com/astrorick/cloak/pkg/algos"
 	"github.com/astrorick/cloak/pkg/keygen"
@@ -27,7 +28,7 @@ func run() error {
 	appVersion := &semantika.Version{
 		Major: 0,
 		Minor: 7,
-		Patch: 1,
+		Patch: 2,
 	}
 
 	var (
@@ -278,14 +279,14 @@ func run() error {
 
 			//* Encryption and Output File Handling
 
-			// encrypt content of input file (nonce + ciphertext)
-			cipherBytes, err := cryptoAlgorithm.Encrypt(plainBytes, key)
+			// encrypt content of input file
+			nonce, cipherBytes, err := cryptoAlgorithm.Encrypt(plainBytes, key)
 			if err != nil {
 				return fmt.Errorf("error encrypting input file: %w", err)
 			}
 
-			// prepend salt for password-based encryption (salt is nil for key-based encryption, leaving nonce + ciphertext untouched)
-			cipherBytes = append(salt, cipherBytes...)
+			// assemble output data as salt + nonce + ciphertext (salt is nil for key-based encryption, leaving nonce + ciphertext)
+			outputBytes := slices.Concat(salt, nonce, cipherBytes)
 
 			// open output file as read/write with [os.Create], only after encryption succeeded so that a failure leaves an existing output file untouched
 			outputFile, err := os.Create(outputFilePath)
@@ -295,7 +296,7 @@ func run() error {
 			defer outputFile.Close() // this only functions as a safety measure in case writing to output file fails (the file would never be closed)
 
 			// write data to output file
-			if _, err := outputFile.Write(cipherBytes); err != nil {
+			if _, err := outputFile.Write(outputBytes); err != nil {
 				return fmt.Errorf("error writing encrypted data to output file: %w", err)
 			}
 
@@ -452,8 +453,13 @@ func run() error {
 
 			//* Decryption and Output File Handling
 
-			// decrypt content of input file (nonce + ciphertext, as the salt has already been stripped for password-based decryption)
-			plainBytes, err := cryptoAlgorithm.Decrypt(cipherBytes, key)
+			// split nonce from ciphertext (the salt has already been stripped for password-based decryption)
+			nonceSize := cryptoAlgorithm.NonceSize()
+			nonce := cipherBytes[:nonceSize]
+			cipherBytes = cipherBytes[nonceSize:]
+
+			// decrypt content of input file
+			plainBytes, err := cryptoAlgorithm.Decrypt(nonce, cipherBytes, key)
 			if err != nil {
 				return fmt.Errorf("error decrypting input file: %w", err)
 			}

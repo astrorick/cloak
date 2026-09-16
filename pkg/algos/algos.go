@@ -11,9 +11,10 @@ import (
 type CryptoAlgorithm interface {
 	Name() string        // Name returns the algorithm's CLI name, which must match its key in [ImplementedAlgos].
 	Description() string // Description returns a short description of the algorithm.
+	NonceSize() int      // NonceSize returns the length in bytes of the nonce produced by Encrypt and expected by Decrypt.
 
-	Encrypt(plainBytes []byte, key []byte) ([]byte, error)  // Encrypt returns a random nonce followed by the ciphertext.
-	Decrypt(cipherBytes []byte, key []byte) ([]byte, error) // Decrypt reverses Encrypt.
+	Encrypt(plainBytes []byte, key []byte) (nonce []byte, cipherBytes []byte, err error) // Encrypt returns a fresh random nonce and the ciphertext.
+	Decrypt(nonce []byte, cipherBytes []byte, key []byte) (plainBytes []byte, err error) // Decrypt reverses Encrypt.
 }
 
 // ImplementedAlgos maps CLI names to the available encryption algorithms.

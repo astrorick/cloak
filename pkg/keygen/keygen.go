@@ -8,7 +8,7 @@ import (
 	"github.com/astrorick/cloak/pkg/keygen/methods"
 )
 
-// GenerateRandomKey returns a random 64-byte key.
+// GenerateRandomKey returns a random 64-byte key for key-based operations.
 func GenerateRandomKey() ([]byte, error) {
 	// make a completely random 64 byte key (no password needed here)
 	key := make([]byte, 64)

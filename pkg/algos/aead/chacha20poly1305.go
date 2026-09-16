@@ -13,8 +13,9 @@ type ChaCha20Poly1305 struct {
 	NameStr string
 	DescStr string
 
-	KeySizeBytes int
-	NewCipher    func(key []byte) (cipher.AEAD, error)
+	NonceSizeBytes int
+	KeySizeBytes   int
+	NewCipher      func(key []byte) (cipher.AEAD, error)
 }
 
 // NewChaCha20Poly1305 initializes a new ChaCha20Poly1305 instance
@@ -23,7 +24,8 @@ func NewChaCha20Poly1305() *ChaCha20Poly1305 {
 		NameStr: "chacha20poly1305",
 		DescStr: "symmetric ChaCha20 with Poly1305 authentication",
 
-		KeySizeBytes: 32,
+		NonceSizeBytes: 12,
+		KeySizeBytes:   32,
 		NewCipher: func(key []byte) (cipher.AEAD, error) {
 			aeadCipher, err := chacha20poly1305.New(key)
 			if err != nil {
@@ -45,24 +47,28 @@ func (aead *ChaCha20Poly1305) Description() string {
 	return aead.DescStr
 }
 
-func (aead *ChaCha20Poly1305) Encrypt(plainBytes []byte, key []byte) ([]byte, error) {
+func (aead *ChaCha20Poly1305) NonceSize() int {
+	return aead.NonceSizeBytes
+}
+
+func (aead *ChaCha20Poly1305) Encrypt(plainBytes []byte, key []byte) ([]byte, []byte, error) {
 	// get cipher from key
 	aeadCipher, err := aead.NewCipher(key[:aead.KeySizeBytes])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// generate random nonce
-	nonce := make([]byte, 12)
+	nonce := make([]byte, aead.NonceSizeBytes)
 	if _, err := rand.Read(nonce); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// return (nonce + ciphertext)
-	return append(nonce, aeadCipher.Seal(nil, nonce, plainBytes, nil)...), nil
+	// return (nonce, ciphertext)
+	return nonce, aeadCipher.Seal(nil, nonce, plainBytes, nil), nil
 }
 
-func (aead *ChaCha20Poly1305) Decrypt(cipherBytes []byte, key []byte) ([]byte, error) {
+func (aead *ChaCha20Poly1305) Decrypt(nonce []byte, cipherBytes []byte, key []byte) ([]byte, error) {
 	// get cipher from key
 	aeadCipher, err := aead.NewCipher(key[:aead.KeySizeBytes])
 	if err != nil {
@@ -70,7 +76,7 @@ func (aead *ChaCha20Poly1305) Decrypt(cipherBytes []byte, key []byte) ([]byte, e
 	}
 
 	// decrypt data
-	plainBytes, err := aeadCipher.Open(nil, cipherBytes[:12], cipherBytes[12:], nil)
+	plainBytes, err := aeadCipher.Open(nil, nonce, cipherBytes, nil)
 	if err != nil {
 		return nil, err
 	}
