@@ -13,18 +13,18 @@ type PBKDF2 struct {
 
 	Hash    func() hash.Hash // hash function for key derivation
 	Iter    int              // number of iterations
-	KeySize int              // key size in bytes
+	KeySize int              // derived key size in bytes (keygen.StandardKeySizeBytes)
 }
 
-// NewPBKDF2 returns a PBKDF2 with Cloak's default parameters.
-func NewPBKDF2() *PBKDF2 {
+// NewPBKDF2 returns a PBKDF2 with Cloak's default parameters that derives keys of keySize bytes.
+func NewPBKDF2(keySize int) *PBKDF2 {
 	return &PBKDF2{
 		NameStr: "pbkdf2",
 		DescStr: "password-based key derivation function 2",
 
 		Hash:    sha512.New,
 		Iter:    100_000,
-		KeySize: 64,
+		KeySize: keySize,
 	}
 }
 

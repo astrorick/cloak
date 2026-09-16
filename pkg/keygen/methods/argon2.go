@@ -12,11 +12,11 @@ type Argon2 struct {
 	Time    uint32 // number of passes over the memory
 	Memory  uint32 // size of memory in KiB
 	Threads uint8  // CPU threads to use
-	KeySize uint32 // key size in bytes
+	KeySize uint32 // derived key size in bytes (keygen.StandardKeySizeBytes)
 }
 
-// NewArgon2 returns an Argon2 with Cloak's default parameters.
-func NewArgon2() *Argon2 {
+// NewArgon2 returns an Argon2 with Cloak's default parameters that derives keys of keySize bytes.
+func NewArgon2(keySize uint32) *Argon2 {
 	return &Argon2{
 		NameStr: "argon2",
 		DescStr: "argon2 key derivation function",
@@ -24,7 +24,7 @@ func NewArgon2() *Argon2 {
 		Time:    8,
 		Memory:  64 * 1024,
 		Threads: 1,
-		KeySize: 64,
+		KeySize: keySize,
 	}
 }
 

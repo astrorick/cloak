@@ -242,9 +242,9 @@ func run() error {
 					return fmt.Errorf("error reading key file \"%s\": %w", encryptKeyFilePath, err)
 				}
 
-				// check that the key length is consistent
-				if len(key) != 64 { //! this value is hardcoded for now
-					return fmt.Errorf("invalid key file size (expected 64 bytes, got %d)", len(key))
+				// check that the key length matches the standard key size defined in the keygen package
+				if len(key) != keygen.StandardKeySizeBytes {
+					return fmt.Errorf("invalid key file size (expected %d bytes, got %d)", keygen.StandardKeySizeBytes, len(key))
 				}
 			} else { //* user wants to use password for encryption, derive crypto key from it
 				// check key derivation method
@@ -270,7 +270,7 @@ func run() error {
 					encryptPassword = utils.RequestUserPassword()
 				}
 
-				// derive encryption key from user password and salt
+				// derive encryption key from user password and salt using the standard key size defined in the keygen package
 				key, err = method.DeriveKey(encryptPassword, salt)
 				if err != nil {
 					return fmt.Errorf("error generating cryptographic key: %w", err)
@@ -416,9 +416,9 @@ func run() error {
 					return fmt.Errorf("error reading key file \"%s\": %w", decryptKeyFilePath, err)
 				}
 
-				// check that the key length is consistent
-				if len(key) != 64 { //! this value is hardcoded for now
-					return fmt.Errorf("invalid key file size (expected 64 bytes, got %d)", len(key))
+				// check that the key length matches the standard key size defined in the keygen package
+				if len(key) != keygen.StandardKeySizeBytes {
+					return fmt.Errorf("invalid key file size (expected %d bytes, got %d)", keygen.StandardKeySizeBytes, len(key))
 				}
 			} else { //* user wants to use password for decryption, derive crypto key from it
 				// check key derivation method
@@ -444,7 +444,7 @@ func run() error {
 					decryptPassword = utils.RequestUserPassword()
 				}
 
-				// derive decryption key from user password and salt
+				// derive decryption key from user password and salt using the standard key size defined in the keygen package
 				key, err = method.DeriveKey(decryptPassword, salt)
 				if err != nil {
 					return fmt.Errorf("error generating cryptographic key: %w", err)

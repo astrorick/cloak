@@ -18,7 +18,7 @@ type ChaCha20Poly1305 struct {
 	NewCipher      func(key []byte) (cipher.AEAD, error)
 }
 
-// NewChaCha20Poly1305 initializes a new ChaCha20Poly1305 instance
+// NewChaCha20Poly1305 initializes a new ChaCha20Poly1305 instance that only uses the first keySizeBytes bytes of the provided crypto key.
 func NewChaCha20Poly1305() *ChaCha20Poly1305 {
 	return &ChaCha20Poly1305{
 		NameStr: "chacha20poly1305",

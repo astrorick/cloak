@@ -18,7 +18,7 @@ type AESGCM struct {
 	NewCipher      func(key []byte) (cipher.AEAD, error)
 }
 
-// newAESGCM initializes a new AESGCM instance with the provided key
+// newAESGCM initializes a new AESGCM instance that only uses the first keySizeBytes bytes of the provided crypto key.
 func newAESGCM(keySizeBytes int) *AESGCM {
 	return &AESGCM{
 		NameStr: fmt.Sprintf("aesgcm%d", keySizeBytes*8),
