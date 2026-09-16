@@ -88,7 +88,7 @@ func run() error {
 			outputFilePath := args[0]
 
 			// check that output file does not already exist, and NEVER OVERWRITE
-			outputFileExists, err := utils.FileExists(outputFilePath)
+			outputFileExists, _, err := utils.FileExists(outputFilePath)
 			if err != nil {
 				return fmt.Errorf("output path error: %w", err)
 			}
@@ -154,104 +154,119 @@ func run() error {
 		Long:  "Encrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. Either a cryptographic key file or a password can be used for encryption. If the optional -d flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			//* Input/Output File Checks
+
 			// read input and output file paths from args
 			inputFilePath := args[0]
 			outputFilePath := args[1]
 
-			// check chosen crypto algorithm
-			algo, ok := algos.ImplementedAlgos[encryptAlgorithmName]
-			if !ok {
-				return fmt.Errorf("unsupported crypto algorithm \"%s\"", encryptAlgorithmName)
-			}
-
-			// check that the input file exists and open it
-			inputFileExists, err := utils.FileExists(inputFilePath)
+			// check that the input file actually exists
+			inputFileExists, inputFileInfo, err := utils.FileExists(inputFilePath)
 			if err != nil {
 				return fmt.Errorf("input path error: %w", err)
 			}
 			if !inputFileExists {
 				return fmt.Errorf("input file \"%s\" does not exist", inputFilePath)
 			}
+
+			// check that the input file is NOT the same as the output file, as it could be overwritten or deleted
+			outputFileExists, outputFileInfo, err := utils.FileExists(outputFilePath)
+			if err != nil {
+				return fmt.Errorf("output path error: %w", err)
+			}
+			if os.SameFile(inputFileInfo, outputFileInfo) {
+				return errors.New("input file and output file must be different")
+			}
+
+			// verify whether the output file already exists, eventually asking the user if he wants to overwrite it
+			if outputFileExists && !encryptForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
+				return errors.New("operation cancelled by user")
+			}
+
+			//* Flag Checks
+
+			// make sure the user did NOT specify both a key file and a password
+			if encryptKeyFilePath != "" && encryptPassword != "" {
+				return errors.New("flag error: flag -k and flag -p are mutually exclusive")
+			}
+
+			// check crypto algorithm
+			cryptoAlgorithm, ok := algos.ImplementedAlgos[encryptAlgorithmName]
+			if !ok {
+				return fmt.Errorf("unsupported crypto algorithm \"%s\"", encryptAlgorithmName)
+			}
+
+			//* Input File Reading
+
+			// open input file as read only with [os.Open]
 			inputFile, err := os.Open(inputFilePath)
 			if err != nil {
 				return fmt.Errorf("error opening input file \"%s\": %w", inputFilePath, err)
 			}
-			defer inputFile.Close()
+			defer inputFile.Close() // this can be deferred safely since the input file is read only
 
-			// check that the output file does not already exist, eventually asking the user if he wants to overwrite it, and create it
-			outputFileExists, err := utils.FileExists(outputFilePath)
-			if err != nil {
-				return fmt.Errorf("output path error: %w", err)
-			}
-			if outputFileExists && !encryptForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
-				return errors.New("operation cancelled by user")
-			}
-			outputFile, err := os.Create(outputFilePath)
-			if err != nil {
-				return fmt.Errorf("error creating output file \"%s\": %w", outputFilePath, err)
-			}
-			defer outputFile.Close()
-
-			// read entire input file
+			// read content of input file (this happens before key derivation to mirror decryption, where the salt is stored in the input file)
 			plainBytes, err := io.ReadAll(inputFile)
 			if err != nil {
 				return fmt.Errorf("error reading input file \"%s\": %w", inputFilePath, err)
 			}
 
-			// load cryptographic key OR derive one from the user-provided password
-			var salt, key []byte
-			if encryptKeyFilePath != "" { //* load (and validate) key file
-				// make sure the user did NOT specify both a key file and a password flag
-				if encryptPassword != "" {
-					return errors.New("flag error: flag -k can't be used with flag -p")
-				}
+			//* Key-Based or Password-Based Encryption Branching
 
-				// check if the key file exists and open it
-				keyFileExists, err := utils.FileExists(encryptKeyFilePath)
+			// load cryptographic key OR derive one from the password provided by the user
+			var salt, key []byte
+			if encryptKeyFilePath != "" { //* user wants to use encryption key, load it and validate it
+				// check if the key file exists
+				keyFileExists, keyFileInfo, err := utils.FileExists(encryptKeyFilePath)
 				if err != nil {
 					return fmt.Errorf("key file path error: %w", err)
 				}
 				if !keyFileExists {
 					return fmt.Errorf("key file \"%s\" does not exist", encryptKeyFilePath)
 				}
+
+				// make sure the output file is NOT the same as the key file, as this could overwrite the crypto key
+				if os.SameFile(keyFileInfo, outputFileInfo) {
+					return errors.New("key file and output file must be different")
+				}
+
+				// open key file and read its content
 				keyFile, err := os.Open(encryptKeyFilePath)
 				if err != nil {
 					return fmt.Errorf("error opening key file \"%s\": %w", encryptKeyFilePath, err)
 				}
 				defer keyFile.Close()
-
-				// read key file
 				key, err = io.ReadAll(keyFile)
 				if err != nil {
 					return fmt.Errorf("error reading key file \"%s\": %w", encryptKeyFilePath, err)
 				}
 
 				// check that the key length is consistent
-				if len(key) != 64 {
+				if len(key) != 64 { //! this value is hardcoded for now
 					return fmt.Errorf("invalid key file size (expected 64 bytes, got %d)", len(key))
 				}
-			} else { //* derive key from password
+			} else { //* user wants to use password for encryption, derive crypto key from it
 				// check key derivation method
 				method, ok := keygen.ImplementedMethods[encryptMethodName]
 				if !ok {
 					return fmt.Errorf("unsupported key derivation method \"%s\"", encryptMethodName)
 				}
 
-				// check if user provided a -p flag
+				// generate random salt for key derivation (this happens before asking for a password to mirror decryption, where the salt is split from the input file first)
+				salt = make([]byte, 16)
+				if _, err := rand.Read(salt); err != nil {
+					return fmt.Errorf("error generating random salt: %w", err)
+				}
+
+				// check if user provided a password via the -p flag and ask otherwise
 				if encryptPassword != "" {
-					// validate user-provided password (passed by -p flag)
+					// validate user-provided password passed by the -p flag
 					if !pswgen.ValidatePassword(encryptPassword) {
 						return errors.New("invalid password")
 					}
 				} else {
 					// request the user inputs its password from terminal
 					encryptPassword = utils.RequestUserPassword()
-				}
-
-				// generate random salt for key derivation
-				salt = make([]byte, 16)
-				if _, err := rand.Read(salt); err != nil {
-					return fmt.Errorf("error generating random salt: %w", err)
 				}
 
 				// derive encryption key from user password and salt
@@ -261,24 +276,32 @@ func run() error {
 				}
 			}
 
-			// encrypt input file
-			cipherBytes, err := algo.Encrypt(plainBytes, key)
+			//* Encryption and Output File Handling
+
+			// encrypt content of input file (nonce + ciphertext)
+			cipherBytes, err := cryptoAlgorithm.Encrypt(plainBytes, key)
 			if err != nil {
 				return fmt.Errorf("error encrypting input file: %w", err)
 			}
 
+			// prepend salt for password-based encryption (salt is nil for key-based encryption, leaving nonce + ciphertext untouched)
+			cipherBytes = append(salt, cipherBytes...)
+
+			// open output file as read/write with [os.Create], only after encryption succeeded so that a failure leaves an existing output file untouched
+			outputFile, err := os.Create(outputFilePath)
+			if err != nil {
+				return fmt.Errorf("error creating output file \"%s\": %w", outputFilePath, err)
+			}
+			defer outputFile.Close() // this only functions as a safety measure in case writing to output file fails (the file would never be closed)
+
 			// write data to output file
-			if encryptKeyFilePath != "" { //* key-based encryption: write nonce + ciphertext
-				if _, err := outputFile.Write(cipherBytes); err != nil {
-					return fmt.Errorf("error writing encrypted data to output file: %w", err)
-				}
-			} else { //* password-based encryption: write salt + nonce + ciphertext
-				if _, err := outputFile.Write(salt); err != nil {
-					return fmt.Errorf("error writing salt to output file: %w", err)
-				}
-				if _, err := outputFile.Write(cipherBytes); err != nil {
-					return fmt.Errorf("error writing encrypted data to output file: %w", err)
-				}
+			if _, err := outputFile.Write(cipherBytes); err != nil {
+				return fmt.Errorf("error writing encrypted data to output file: %w", err)
+			}
+
+			// explicitly close output file BEFORE eventually deleting original to avoid mishaps
+			if err = outputFile.Close(); err != nil {
+				return fmt.Errorf("error saving output file: %w", err)
 			}
 
 			// delete original file if requested
@@ -305,92 +328,113 @@ func run() error {
 		Long:  "Decrypt the file provided as input with the algorithm specified after the optional -a flag and write the result to the output file path. Either a cryptographic key file or a password can be used for decryption. If the optional -d flag is passed, the source file is then deleted.",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			//* Input/Output File Checks
+
 			// read input and output file paths from args
 			inputFilePath := args[0]
 			outputFilePath := args[1]
 
-			// check chosen crypto algorithm
-			algo, ok := algos.ImplementedAlgos[decryptAlgorithmName]
-			if !ok {
-				return fmt.Errorf("unsupported crypto algorithm \"%s\"", decryptAlgorithmName)
-			}
-
-			// check that the input file exists and open it
-			inputFileExists, err := utils.FileExists(inputFilePath)
+			// check that the input file actually exists
+			inputFileExists, inputFileInfo, err := utils.FileExists(inputFilePath)
 			if err != nil {
 				return fmt.Errorf("input path error: %w", err)
 			}
 			if !inputFileExists {
 				return fmt.Errorf("input file \"%s\" does not exist", inputFilePath)
 			}
+
+			// check that the input file is NOT the same as the output file, as it could be overwritten or deleted
+			outputFileExists, outputFileInfo, err := utils.FileExists(outputFilePath)
+			if err != nil {
+				return fmt.Errorf("output path error: %w", err)
+			}
+			if os.SameFile(inputFileInfo, outputFileInfo) {
+				return errors.New("input file and output file must be different")
+			}
+
+			// verify whether the output file already exists, eventually asking the user if he wants to overwrite it
+			if outputFileExists && !decryptForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
+				return errors.New("operation cancelled by user")
+			}
+
+			//* Flag Checks
+
+			// make sure the user did NOT specify both a key file and a password
+			if decryptKeyFilePath != "" && decryptPassword != "" {
+				return errors.New("flag error: flag -k and flag -p are mutually exclusive")
+			}
+
+			// check crypto algorithm
+			cryptoAlgorithm, ok := algos.ImplementedAlgos[decryptAlgorithmName]
+			if !ok {
+				return fmt.Errorf("unsupported crypto algorithm \"%s\"", decryptAlgorithmName)
+			}
+
+			//* Input File Reading
+
+			// open input file as read only with [os.Open]
 			inputFile, err := os.Open(inputFilePath)
 			if err != nil {
 				return fmt.Errorf("error opening input file \"%s\": %w", inputFilePath, err)
 			}
-			defer inputFile.Close()
+			defer inputFile.Close() // this can be deferred safely since the input file is read only
 
-			// check that the output file does not already exist, eventually asking the user if he wants to overwrite it, and create it
-			outputFileExists, err := utils.FileExists(outputFilePath)
-			if err != nil {
-				return fmt.Errorf("output path error: %w", err)
-			}
-			if outputFileExists && !decryptForceOverwrite && !utils.ConfirmOverwrite(outputFilePath) {
-				return errors.New("operation cancelled by user")
-			}
-			outputFile, err := os.Create(outputFilePath)
-			if err != nil {
-				return fmt.Errorf("error creating output file \"%s\": %w", outputFilePath, err)
-			}
-			defer outputFile.Close()
-
-			// read entire input file
+			// read content of input file (this must happen before key derivation, as the salt is stored in the input file)
 			cipherBytes, err := io.ReadAll(inputFile)
 			if err != nil {
 				return fmt.Errorf("error reading input file \"%s\": %w", inputFilePath, err)
 			}
 
-			// load cryptographic key OR derive one from the user-provided password
-			var salt, key []byte
-			if decryptKeyFilePath != "" { //* load (and validate) key file
-				// make sure the user did NOT specify both a key file and a password flag
-				if decryptPassword != "" {
-					return errors.New("flag error: flag -k can't be used with flag -p")
-				}
+			//* Key-Based or Password-Based Decryption Branching
 
-				// check if the key file exists and open it
-				keyFileExists, err := utils.FileExists(decryptKeyFilePath)
+			// load cryptographic key OR derive one from the password provided by the user
+			var salt, key []byte
+			if decryptKeyFilePath != "" { //* user wants to use decryption key, load it and validate it
+				// check if the key file exists
+				keyFileExists, keyFileInfo, err := utils.FileExists(decryptKeyFilePath)
 				if err != nil {
 					return fmt.Errorf("key file path error: %w", err)
 				}
 				if !keyFileExists {
 					return fmt.Errorf("key file \"%s\" does not exist", decryptKeyFilePath)
 				}
+
+				// make sure the output file is NOT the same as the key file, as this could overwrite the crypto key
+				if os.SameFile(keyFileInfo, outputFileInfo) {
+					return errors.New("key file and output file must be different")
+				}
+
+				// open key file and read its content
 				keyFile, err := os.Open(decryptKeyFilePath)
 				if err != nil {
 					return fmt.Errorf("error opening key file \"%s\": %w", decryptKeyFilePath, err)
 				}
 				defer keyFile.Close()
-
-				// read key file
 				key, err = io.ReadAll(keyFile)
 				if err != nil {
 					return fmt.Errorf("error reading key file \"%s\": %w", decryptKeyFilePath, err)
 				}
 
 				// check that the key length is consistent
-				if len(key) != 64 {
+				if len(key) != 64 { //! this value is hardcoded for now
 					return fmt.Errorf("invalid key file size (expected 64 bytes, got %d)", len(key))
 				}
-			} else { //* derive key from password
+			} else { //* user wants to use password for decryption, derive crypto key from it
 				// check key derivation method
 				method, ok := keygen.ImplementedMethods[decryptMethodName]
 				if !ok {
 					return fmt.Errorf("unsupported key derivation method \"%s\"", decryptMethodName)
 				}
 
-				// check if user provided a -p flag
+				// split salt from nonce + ciphertext, before asking for a password that could not be used anyway
+				if len(cipherBytes) < 16 {
+					return errors.New("invalid encrypted file format (too short for password-based decryption)")
+				}
+				salt, cipherBytes = cipherBytes[:16], cipherBytes[16:]
+
+				// check if user provided a password via the -p flag and ask otherwise
 				if decryptPassword != "" {
-					// validate user-provided password (passed by -p flag)
+					// validate user-provided password passed by the -p flag
 					if !pswgen.ValidatePassword(decryptPassword) {
 						return errors.New("invalid password")
 					}
@@ -399,12 +443,6 @@ func run() error {
 					decryptPassword = utils.RequestUserPassword()
 				}
 
-				// read salt for key derivation from file
-				if len(cipherBytes) < 16 {
-					return errors.New("invalid encrypted file format (too short for password-based decryption)")
-				}
-				salt = cipherBytes[:16]
-
 				// derive decryption key from user password and salt
 				key, err = method.DeriveKey(decryptPassword, salt)
 				if err != nil {
@@ -412,22 +450,29 @@ func run() error {
 				}
 			}
 
-			// decrypt input file
-			var plainBytes []byte
-			if decryptKeyFilePath != "" {
-				// key-based decryption: decrypt nonce + ciphertext
-				plainBytes, err = algo.Decrypt(cipherBytes, key)
-			} else {
-				// password-based decryption: decrypt nonce + ciphertext (after salt)
-				plainBytes, err = algo.Decrypt(cipherBytes[16:], key)
-			}
+			//* Decryption and Output File Handling
+
+			// decrypt content of input file (nonce + ciphertext, as the salt has already been stripped for password-based decryption)
+			plainBytes, err := cryptoAlgorithm.Decrypt(cipherBytes, key)
 			if err != nil {
 				return fmt.Errorf("error decrypting input file: %w", err)
 			}
 
+			// open output file as read/write with [os.Create], only after decryption succeeded so that a wrong key or password leaves an existing output file untouched
+			outputFile, err := os.Create(outputFilePath)
+			if err != nil {
+				return fmt.Errorf("error creating output file \"%s\": %w", outputFilePath, err)
+			}
+			defer outputFile.Close() // this only functions as a safety measure in case writing to output file fails (the file would never be closed)
+
 			// write data to output file
 			if _, err := outputFile.Write(plainBytes); err != nil {
 				return fmt.Errorf("error writing decrypted data to output file: %w", err)
+			}
+
+			// explicitly close output file BEFORE eventually deleting original to avoid mishaps
+			if err = outputFile.Close(); err != nil {
+				return fmt.Errorf("error saving output file: %w", err)
 			}
 
 			// delete original file if requested

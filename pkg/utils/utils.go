@@ -20,19 +20,27 @@ func PrintVersion(appVersion *semantika.Version) {
 	fmt.Printf("Cloak v%s by Astrorick\n", appVersion.String())
 }
 
-// FileExists reports whether filePath exists. It returns an error if filePath cannot be accessed.
-func FileExists(filePath string) (bool, error) {
-	_, err := os.Stat(filePath)
+// FileExists reports whether filePath exists and returns its [os.FileInfo], which is nil when filePath does not exist. It returns an error if filePath cannot be accessed or is a directory.
+func FileExists(filePath string) (bool, os.FileInfo, error) {
+	fileInfo, err := os.Stat(filePath)
 
+	// no error
 	if err == nil {
-		return true, nil
+		// reject directories with the same error the os package reports for them
+		if fileInfo.IsDir() {
+			return false, nil, &os.PathError{Op: "stat", Path: filePath, Err: syscall.EISDIR}
+		}
+
+		return true, fileInfo, nil
 	}
 
+	// file does not exist
 	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
+		return false, nil, nil
 	}
 
-	return false, err
+	// other errors
+	return false, nil, err
 }
 
 // ConfirmOverwrite asks the user whether to overwrite filePath, repeating until a valid answer is provided.
