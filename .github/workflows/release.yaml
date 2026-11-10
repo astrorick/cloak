@@ -67,6 +67,12 @@ jobs:
           build_and_package "darwin" "amd64" ""
           build_and_package "darwin" "arm64" ""
 
+      - name: Generate Checksums
+        run: |
+          cd "${RUNNER_TEMP}/dist"
+          sha256sum *.zip > checksums.txt
+          cat checksums.txt
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
