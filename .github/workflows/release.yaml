@@ -3,7 +3,7 @@ name: Release Binaries
 on:
   push:
     tags:
-      - 'v*' # triggers on any release tag push
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   build-and-release:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write # required to upload release assets
+      contents: write
 
     env:
       TAG: ${{ github.ref_name }}
@@ -20,41 +20,41 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v7
 
-      - name: Setup Go
+      - name: Setup Go Environment
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-
-      - name: Check Tag Matches App Version
-        run: |
-          APP_VERSION=$(go run cmd/cloak/main.go version | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
-          if [ "${APP_VERSION}" != "${TAG}" ]; then
-            echo "::error::Tag ${TAG} does not match app version ${APP_VERSION} in cmd/cloak/main.go"
-            exit 1
-          fi
 
       - name: Build and Compress Binaries
         env:
           CGO_ENABLED: '0'
         run: |
-          mkdir -p dist
-
           build_and_package() {
             local GOOS="$1"
             local GOARCH="$2"
-            local EXT="$3"
-            local BINNAME="cloak${EXT}"
+            local EXTENSION="$3"
+            local BINARY_NAME="cloak${EXTENSION}"
             local ARCHIVE_NAME="cloak-${TAG}-${GOOS}-${GOARCH}.zip"
-            local OUTPUT_DIR="build/${GOOS}-${GOARCH}"
+            local OUTPUT_DIR="${RUNNER_TEMP}/build/${GOOS}-${GOARCH}"
 
             mkdir -p "${OUTPUT_DIR}"
 
-            echo "Building for ${GOOS}-${GOARCH}..."
-            GOOS="${GOOS}" GOARCH="${GOARCH}" go build -trimpath -ldflags="-s -w" -o "${OUTPUT_DIR}/${BINNAME}" cmd/cloak/main.go
+            echo "Building binary for ${GOOS}-${GOARCH}..."
+            GOOS="${GOOS}" GOARCH="${GOARCH}" go build -trimpath -ldflags="-s -w" -o "${OUTPUT_DIR}/${BINARY_NAME}" ./cmd/cloak
 
-            echo "Packaging ${ARCHIVE_NAME}..."
-            zip -j "dist/${ARCHIVE_NAME}" "${OUTPUT_DIR}/${BINNAME}"
+            echo "Verifying binary for ${GOOS}-${GOARCH}..."
+            local BUILT_VERSION
+            BUILT_VERSION=$(go version -m "${OUTPUT_DIR}/${BINARY_NAME}" | awk '$1 == "mod" { print $3 }')
+            if [ "${BUILT_VERSION}" != "${TAG}" ]; then
+              echo "::error::${GOOS}-${GOARCH} binary reports version '${BUILT_VERSION}', expected '${TAG}'"
+              exit 1
+            fi
+
+            echo "Packaging binary in ${ARCHIVE_NAME}..."
+            zip -j "${RUNNER_TEMP}/dist/${ARCHIVE_NAME}" "${OUTPUT_DIR}/${BINARY_NAME}"
           }
+
+          mkdir -p "${RUNNER_TEMP}/dist"
 
           # Linux
           build_and_package "linux" "amd64" ""
@@ -63,7 +63,7 @@ jobs:
           # Windows
           build_and_package "windows" "amd64" ".exe"
 
-          # Mac
+          # MacOS
           build_and_package "darwin" "amd64" ""
           build_and_package "darwin" "arm64" ""
 
@@ -72,6 +72,7 @@ jobs:
         with:
           tag_name: ${{ env.TAG }}
           name: Cloak ${{ env.TAG }}
-          files: dist/*
+          files: ${{ runner.temp }}/dist/*
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

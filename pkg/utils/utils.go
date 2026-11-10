@@ -11,13 +11,12 @@ import (
 	"syscall"
 
 	"github.com/astrorick/cloak/pkg/pswgen"
-	"github.com/astrorick/semantika"
 	"golang.org/x/term"
 )
 
-// PrintVersion prints the app version to stdout.
-func PrintVersion(appVersion *semantika.Version) {
-	fmt.Printf("Cloak v%s by Astrorick\n", appVersion.String())
+// PrintVersion prints the app version to stdout. The version string is printed as is with no additional checks.
+func PrintVersion(appVersion string) {
+	fmt.Printf("Cloak %s by Astrorick\n", appVersion)
 }
 
 // FileExists reports whether filePath exists and returns its [os.FileInfo], which is nil when filePath does not exist. It returns an error if filePath cannot be accessed or is a directory.

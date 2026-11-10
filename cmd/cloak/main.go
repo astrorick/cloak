@@ -6,15 +6,28 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"slices"
 
 	"github.com/astrorick/cloak/pkg/algos"
 	"github.com/astrorick/cloak/pkg/keygen"
 	"github.com/astrorick/cloak/pkg/pswgen"
 	"github.com/astrorick/cloak/pkg/utils"
-	"github.com/astrorick/semantika"
 	"github.com/spf13/cobra"
 )
+
+// readBuildVersion returns the version injected by the Go toolchain in the binary's build info.
+// The returned string matches the git tag for automatic release builds (via GitHub workflow) and for local user builds (via "go install ...@vX.Y.Z").
+// If the binary is not built on a clean working tree, it will be marked as "dirty" (e.g., "v0.8.0+dirty").
+// If the binary is not built on a tagged commit, it will get a pseudo-version based on the latest tag with the patch number bumped (e.g., "v0.8.1-0.<timestamp>-<hash>" for a commit after v0.8.0).
+// If the binary is built from a file path, run with go run, or built without git info, it will be marked as "(unversioned)".
+func readBuildVersion() string {
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+
+	return "(unversioned)"
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -25,11 +38,7 @@ func main() {
 
 func run() error {
 	//* Program Version */
-	appVersion := &semantika.Version{
-		Major: 0,
-		Minor: 7,
-		Patch: 2,
-	}
+	appVersion := readBuildVersion()
 
 	var (
 		//* Root Command Flags */

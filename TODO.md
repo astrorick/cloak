@@ -13,3 +13,7 @@
 ## Quality of Life
 
 - [x] Implement detection of execution in non-interactive terminals and react accordingly (overwrite confirmation, password input, etc.).
+
+## Auto Update
+
+- [ ] Implement and test self-update on Windows 
