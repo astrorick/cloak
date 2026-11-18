@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAlgosCommand returns the "algos" command, which lists the implemented crypto algorithms.
+// [newAlgosCommand] returns the "algos" command, which lists the implemented crypto algorithms.
 func newAlgosCommand() *cobra.Command {
 	//* Display Algos Command */
 	return &cobra.Command{

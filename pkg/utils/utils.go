@@ -14,12 +14,17 @@ import (
 	"golang.org/x/term"
 )
 
-// PrintVersion prints the app version to stdout. The version string is printed as is with no additional checks.
-func PrintVersion(appVersion string) {
-	fmt.Printf("Cloak %s by Astrorick\n", appVersion)
+// [VersionLine] returns the line that identifies the program and its version. The version string is used as is with no additional checks.
+func VersionLine(appVersion string) string {
+	return fmt.Sprintf("Cloak %s by Astrorick", appVersion)
 }
 
-// FileExists reports whether filePath exists and returns its [os.FileInfo], which is nil when filePath does not exist. It returns an error if filePath cannot be accessed or is a directory.
+// [PrintVersion] prints the [VersionLine] for appVersion to stdout.
+func PrintVersion(appVersion string) {
+	fmt.Println(VersionLine(appVersion))
+}
+
+// [FileExists] reports whether filePath exists and returns its [os.FileInfo], which is nil when filePath does not exist. It returns an error if filePath cannot be accessed or is a directory.
 func FileExists(filePath string) (bool, os.FileInfo, error) {
 	fileInfo, err := os.Stat(filePath)
 
@@ -42,7 +47,7 @@ func FileExists(filePath string) (bool, os.FileInfo, error) {
 	return false, nil, err
 }
 
-// ConfirmOverwrite asks the user whether to overwrite filePath, repeating until a valid answer is provided. An empty answer counts as no.
+// [ConfirmOverwrite] asks the user whether to overwrite filePath, repeating until a valid answer is provided. An empty answer counts as no.
 func ConfirmOverwrite(filePath string) bool {
 	affirmativeAnswers := []string{"y", "yes"}
 	negativeAnswers := []string{"n", "no", ""}
@@ -70,7 +75,7 @@ func ConfirmOverwrite(filePath string) bool {
 	}
 }
 
-// RequestUserPassword prompts for a password with masked input, repeating until it passes the [pswgen.ValidatePassword] check. If confirm is true, the password must also be entered a second time. It returns an error if the password cannot be read, e.g. when stdin is not a terminal.
+// [RequestUserPassword] prompts for a password with masked input, repeating until it passes the [pswgen.ValidatePassword] check. If confirm is true, the password must also be entered a second time. It returns an error if the password cannot be read, e.g. when stdin is not a terminal.
 func RequestUserPassword(confirm bool) (string, error) {
 	for {
 		// ask for password

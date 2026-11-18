@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newPswgenCommand returns the "pswgen" command, which prints one or more cryptographically random passwords.
+// [newPswgenCommand] returns the "pswgen" command, which prints one or more cryptographically random passwords.
 func newPswgenCommand() *cobra.Command {
 	var (
 		//* Pswgen Command Flags */

@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newMethodsCommand returns the "methods" command, which lists the implemented key derivation methods.
+// [newMethodsCommand] returns the "methods" command, which lists the implemented key derivation methods.
 func newMethodsCommand() *cobra.Command {
 	//* Display Methods Command */
 	return &cobra.Command{

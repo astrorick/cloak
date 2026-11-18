@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newKeygenCommand returns the "keygen" command, which writes a new random cryptographic key to the output path.
+// [newKeygenCommand] returns the "keygen" command, which writes a new random cryptographic key to the output path.
 func newKeygenCommand() *cobra.Command {
 	//* Keygen Command */
 	return &cobra.Command{

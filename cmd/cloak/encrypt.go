@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newEncryptCommand returns the "encrypt" command, which encrypts the input file with a key file or a password and writes the result to the output file.
+// [newEncryptCommand] returns the "encrypt" command, which encrypts the input file with a key file or a password and writes the result to the output file.
 func newEncryptCommand() *cobra.Command {
 	var (
 		//* Encrypt Command Flags */

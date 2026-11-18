@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDecryptCommand returns the "decrypt" command, which decrypts the input file with a key file or a password and writes the result to the output file.
+// [newDecryptCommand] returns the "decrypt" command, which decrypts the input file with a key file or a password and writes the result to the output file.
 func newDecryptCommand() *cobra.Command {
 	var (
 		//* Decrypt Command Flags */
