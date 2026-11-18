@@ -5,7 +5,6 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/astrorick/cloak/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -63,7 +62,7 @@ func newRootCommand(appVersion string) *cobra.Command {
 			DisableDefaultCmd: true, // this disables the "completion" command which is shown by default
 		},
 	}
-	rootCommand.SetVersionTemplate(utils.VersionLine(appVersion) + "\n")
+	rootCommand.SetVersionTemplate(versionLine(appVersion) + "\n")
 
 	return rootCommand
 }

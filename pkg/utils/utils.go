@@ -14,16 +14,6 @@ import (
 	"golang.org/x/term"
 )
 
-// [VersionLine] returns the line that identifies the program and its version. The version string is used as is with no additional checks.
-func VersionLine(appVersion string) string {
-	return fmt.Sprintf("Cloak %s by Astrorick", appVersion)
-}
-
-// [PrintVersion] prints the [VersionLine] for appVersion to stdout.
-func PrintVersion(appVersion string) {
-	fmt.Println(VersionLine(appVersion))
-}
-
 // [FileExists] reports whether filePath exists and returns its [os.FileInfo], which is nil when filePath does not exist. It returns an error if filePath cannot be accessed or is a directory.
 func FileExists(filePath string) (bool, os.FileInfo, error) {
 	fileInfo, err := os.Stat(filePath)
